@@ -1895,14 +1895,15 @@ function exportCSV(){
   const mLabel=PERIOD_DEFS[infP].label;
   const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
   const fv=v=>v?String(v.toFixed(2)):'';
-  let csv=`\uFEFFConcepto,${Q1m.map(m=>MN[m]).join(',')},Total ${mLabel}\n--- INGRESOS ---${','.repeat(Q1m.length+1)}\n`;
+  const q=s=>{s=String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  let csv=`\uFEFFConcepto,${Q1m.map(m=>MN[m]).join(',')},${q('Total '+mLabel)}\n--- INGRESOS ---${','.repeat(Q1m.length+1)}\n`;
   [{l:'Booking bruto',c:'booking',f:'bruto'},{l:'Comisión Booking',c:'booking',f:'com',abs:true},
    {l:'Airbnb bruto',c:'airbnb',f:'bruto'},{l:'Comisión Airbnb',c:'airbnb',f:'com',abs:true},{l:'Directo',c:'directo',f:'neto'}
   ].forEach(r=>{const ms=Q1m.map(m=>visibleReservas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));const fn2=v=>r.abs?fv(Math.abs(v)):fv(v);csv+=`${r.l},${ms.map(fn2).join(',')},${fn2(ms.reduce((a,b)=>a+b,0))}\n`;});
   csv+=`INGRESOS NETOS,${Q1m.map(m=>fv(ingTotal([m],'neto'))).join(',')},${fv(ingTotal(Q1m,'neto'))}\n--- GASTOS FIJOS ---,,,,\n`;
-  visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${g.n},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
+  visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${q(g.n)},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
   csv+=`--- GASTOS VARIABLES ---,,,,\n`;
-  visibleGastosVar().forEach(g=>{const gm=new Date(g.fecha).getMonth()+1;csv+=`${g.n},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
+  visibleGastosVar().forEach(g=>{const gm=new Date(g.fecha).getMonth()+1;csv+=`${q(g.n)},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
   csv+=`TOTAL GASTOS,${Q1m.map(m=>fv(gTot([m]))).join(',')},${fv(gTot(Q1m))}\nRESULTADO NETO,${Q1m.map(m=>fv(ingTotal([m],'neto')-gTot([m]))).join(',')},${fv(ingTotal(Q1m,'neto')-gTot(Q1m))}\n`;
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`hostal_matildas_${infP}_2026.csv`;a.click();notif('CSV exportado');
 }
@@ -2070,15 +2071,18 @@ async function exportPDF(){
       y+=7;
     }
 
+    const LH=3.8; // altura por línea (mm), usada tanto al dibujar como al avanzar la fila
     function drawRow(label,vals,total,color,indent){
       doc.setFontSize(8);
       doc.setFont('helvetica',color?'bold':'normal');
-      // Parte el concepto en líneas y reserva alto suficiente para que no se solapen
-      const lines=doc.splitTextToSize((indent?'  ':'')+label,38);
-      const rowH=Math.max(lineH,lines.length*3.6+1.4);
+      // Parte el concepto en líneas; recorta a máx. 2 líneas con «…» para mantener la tabla compacta
+      let lines=doc.splitTextToSize((indent?'  ':'')+label,38);
+      if(lines.length>2){lines=lines.slice(0,2);lines[1]=lines[1].replace(/\s*\S{0,1}$/,'')+'…';}
+      const rowH=Math.max(lineH,lines.length*LH+1.4);
       if(y+rowH>285){doc.addPage();y=15;}
       if(color){doc.setTextColor(...color);}else{doc.setTextColor(60,60,60);}
-      doc.text(lines,M,y+3.5);
+      // Dibuja línea a línea con interlineado LH fijo para que coincida con rowH (evita solapes)
+      lines.forEach((ln,li)=>doc.text(ln,M,y+3.5+li*LH));
       vals.forEach((v,i)=>{
         const x=M+40+i*colW;
         if(v){doc.text(fn0(v).replace('€',''),x+colW-2,y+3.5,{align:'right'});}
@@ -2150,7 +2154,8 @@ async function exportPDF(){
     const gT=gfT+gvT;
     drawRow('TOTAL GASTOS',Q1m.map(m=>gTot([m])),gT,[191,95,74]);
     const res=inT-gT;
-    doc.setFillColor(res>=0?13:40,res>=0?40:13,res>=0?13:13,20);
+    if(y+7>285){doc.addPage();y=15;}
+    if(res>=0){doc.setFillColor(230,244,235);}else{doc.setFillColor(247,230,226);}
     doc.rect(M,y,W-2*M,7,'F');
     drawRow('RESULTADO NETO',Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return n;}),res,res>=0?[90,158,114]:[191,95,74]);
 
@@ -2171,13 +2176,18 @@ async function exportPDF(){
         doc.setFontSize(8);
         doc.setFont('helvetica','bold');
         doc.setTextColor(60,60,60);
-        doc.text(g.n+' — '+g.fecha+' — '+fn(g.importe),M,jy);
-        jy+=3;
+        const jLines=doc.splitTextToSize(g.n+' — '+g.fecha+' — '+fn(g.importe),W-2*M);
+        doc.text(jLines,M,jy);
+        jy+=jLines.length*3.6+1;
         try{
           if(g.foto&&(g.foto.startsWith('data:image')||g.foto.startsWith('data:application/octet'))){
             const imgType=g.foto.includes('jpeg')?'JPEG':'PNG';
-            doc.addImage(g.foto,imgType,M,jy,80,60,'','FAST');
-            jy+=65;
+            // Escala manteniendo proporción dentro de una caja máx. 80×90 mm
+            const maxW=80,maxH=90;let iw=maxW,ih=maxH;
+            try{const p=doc.getImageProperties(g.foto);const r=Math.min(maxW/p.width,maxH/p.height);iw=p.width*r;ih=p.height*r;}catch(_){ih=60;}
+            if(jy+ih>285){doc.addPage();jy=15;}
+            doc.addImage(g.foto,imgType,M,jy,iw,ih,'','FAST');
+            jy+=ih+5;
           } else if(g.foto.startsWith('data:application/pdf')){
             doc.setFontSize(8);
             doc.setTextColor(154,150,144);
