@@ -783,6 +783,13 @@ const RESERVAS_BASE = [
   {id:'b-hb9-03',room:'HB 9',guest:'Jorge Jiménez',       ci:'2026-02-27',co:'2026-03-01',canal:'booking', bruto:110,  com:-16.50,neto:88.30},
   {id:'b-hb9-04',room:'HB 9',guest:'Javier Hernández',    ci:'2026-03-06',co:'2026-03-08',canal:'booking', bruto:99,   com:-14.85,neto:79.47},
   {id:'b-hb9-05',room:'HB 9',guest:'Alejandra Catala',    ci:'2026-03-19',co:'2026-03-21',canal:'booking', bruto:90,   com:-13.50,neto:72.25},
+  // ── Q2 2026 (Abr–Jun) — Airbnb ──
+  // Fuente: "Informe de ingresos" Airbnb T2 2026 (PDF resumen). El informe solo da
+  // totales por mes (no reserva a reserva), así que se cargan 3 entradas-resumen.
+  // Verificado: bruto 1585 · comisión -220,91 · neto 1364,09 (abr 730/661,89 · may 805/654,02 · jun 50/48,18) ✓
+  {id:'a-t2-abr',room:'Airbnb T2',guest:'Resumen Airbnb · abril', ci:'2026-04-01',co:'2026-04-30',canal:'airbnb',bruto:730,com:-68.11, neto:661.89,resumen:true},
+  {id:'a-t2-may',room:'Airbnb T2',guest:'Resumen Airbnb · mayo',  ci:'2026-05-01',co:'2026-05-31',canal:'airbnb',bruto:805,com:-150.98,neto:654.02,resumen:true},
+  {id:'a-t2-jun',room:'Airbnb T2',guest:'Resumen Airbnb · junio', ci:'2026-06-01',co:'2026-06-30',canal:'airbnb',bruto:50, com:-1.82,  neto:48.18, resumen:true},
 ];
 
 let RESERVAS_EXTRA = JSON.parse(localStorage.getItem('ing_extra')||'[]');
@@ -1072,6 +1079,17 @@ function renderExcTable(pKey){
     const tot=vals.reduce((a,b)=>a+b,0);
     tb+=`<tr><td class="L stk">${ROOM_NAME[room]}</td>${vals.map(v=>`<td class="${v?'pos':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct pos">${tot?fn(tot):''}</td>`:''}</tr>`;
     const comV=cols.map(c=>Math.abs(visibleReservas().filter(r=>r.room===room&&getMes(r)===c).reduce((s,r)=>s+(r.com||0),0)));
+    const comT=comV.reduce((a,b)=>a+b,0);
+    if(comT>0){tb+=`<tr class="sub"><td class="L stk">↳ comisión OTA</td>${comV.map(v=>`<td class="com">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct com">${fn(comT)}</td>`:''}</tr>`;}
+  });
+  // Reservas-resumen sin habitación concreta (p.ej. informe trimestral Airbnb T2)
+  const resR=visibleReservas().filter(r=>!ROOMS.includes(r.room));
+  [...new Set(resR.map(r=>r.room))].forEach(rm=>{
+    const grp=resR.filter(r=>r.room===rm);
+    const vals=cols.map(c=>grp.filter(r=>getMes(r)===c).reduce((s,r)=>s+(r.bruto||0),0));
+    const tot=vals.reduce((a,b)=>a+b,0);
+    tb+=`<tr><td class="L stk">${rm}</td>${vals.map(v=>`<td class="${v?'pos':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct pos">${tot?fn(tot):''}</td>`:''}</tr>`;
+    const comV=cols.map(c=>Math.abs(grp.filter(r=>getMes(r)===c).reduce((s,r)=>s+(r.com||0),0)));
     const comT=comV.reduce((a,b)=>a+b,0);
     if(comT>0){tb+=`<tr class="sub"><td class="L stk">↳ comisión OTA</td>${comV.map(v=>`<td class="com">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct com">${fn(comT)}</td>`:''}</tr>`;}
   });
