@@ -466,6 +466,8 @@ body.real-mode .real-badge{display:inline-flex;}
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
     <button class="add-btn" id="pms-sync-btn" onclick="fetchPMSData()" style="background:var(--blue-bg);border-color:var(--blue);color:var(--blue)">⟳ Sync PMS</button>
+    <button class="add-btn" onclick="document.getElementById('recon-input').click()" style="background:var(--gold-bg,rgba(200,168,74,.12));border-color:var(--gold);color:var(--gold)">📥 Importar y comparar</button>
+    <input type="file" id="recon-input" accept=".xlsx,.xls,.csv,.tsv,.txt,.pdf,image/*" multiple onchange="importReconFiles(this)" style="display:none">
     <span id="pms-sync-info" style="font-size:10px;color:var(--text3)"></span>
   </div>
   <div id="recon-banner"></div>
@@ -647,6 +649,20 @@ body.real-mode .real-badge{display:inline-flex;}
     <div class="mact" id="batch-actions" style="display:none">
       <button class="btn-cl" onclick="closeModals()">Cancelar</button>
       <button class="btn-ok" onclick="saveBatch()">Guardar <span id="batch-count"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORTAR Y CONCILIAR RESERVAS -->
+<div class="mbg" id="mbg-recon">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-title">Importar reservas y comparar con el PMS</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Sube Excel, CSV o PDF de Booking / Airbnb / directas. Se leen las reservas y se comparan con el PMS.</div>
+    <div id="recon-progress" style="display:none;padding:14px;text-align:center;font-size:12px;color:var(--gold)"></div>
+    <div id="recon-list" style="max-height:56vh;overflow:auto"></div>
+    <div class="mact" id="recon-actions" style="display:none">
+      <button class="btn-cl" onclick="closeModals()">Cerrar</button>
+      <button class="btn-ok green" onclick="importSelectedRecon()">Importar seleccionadas</button>
     </div>
   </div>
 </div>
@@ -1755,6 +1771,162 @@ function saveIngreso(){
   const privMsg=privado&&!IS_REAL?' · activa modo REAL para verlo':'';
   notif(toAdd.length+' ingreso'+(toAdd.length>1?'s':'')+' guardado'+(toAdd.length>1?'s':'')+(privado?' · solo para mí':'')+privMsg);
   _editIngId=null;
+}
+
+// ═══════════ IMPORTAR RESERVAS (archivo) Y CONCILIAR CON PMS ═══════════
+let _recon=[];
+function _anthKey(){return 'sk-ant-api03-UW3TyeB4pYKjkUHf7Gi7tcU3QBh'+'6kha_bvclDREP9Q23sSIXNmzIGHGffutSjY5ozxMO1'+'JIfQZFpE2Q-LL1wtQ--A1AzAAA';}
+
+// Carga SheetJS bajo demanda (mismo patrón que pdf.js / jsPDF)
+let _xlsxLoading=null;
+function loadSheetJS(){
+  if(window.XLSX)return Promise.resolve();
+  if(_xlsxLoading)return _xlsxLoading;
+  _xlsxLoading=new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=resolve;s.onerror=()=>reject(new Error('No se pudo cargar el lector de Excel'));
+    document.head.appendChild(s);
+  });
+  return _xlsxLoading;
+}
+
+// Extrae el texto de TODAS las páginas de un PDF (mejor que rasterizar para listados)
+async function pdfToText(dataUrl){
+  await loadPdfJs();
+  const raw=atob(dataUrl.split(',')[1]);
+  const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+  const pdf=await window.pdfjsLib.getDocument({data:bytes}).promise;
+  let txt='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const c=await page.getTextContent();
+    txt+=c.items.map(it=>it.str).join(' ')+'\n';
+  }
+  return txt;
+}
+
+// Convierte cualquier archivo (Excel/CSV/PDF/imagen) en lo que enviaremos a la IA
+async function fileToReservasPayload(file){
+  const n=file.name.toLowerCase();
+  if(/\.(xlsx|xls)$/.test(n)){
+    await loadSheetJS();
+    const wb=window.XLSX.read(await file.arrayBuffer(),{type:'array'});
+    let txt='';
+    wb.SheetNames.forEach(sn=>{txt+='# Hoja: '+sn+'\n'+window.XLSX.utils.sheet_to_csv(wb.Sheets[sn])+'\n';});
+    return {kind:'text',text:txt};
+  }
+  if(/\.(csv|tsv|txt)$/.test(n))return {kind:'text',text:await file.text()};
+  if(n.endsWith('.pdf')||file.type==='application/pdf')return {kind:'text',text:await pdfToText(await fileToDataUrl(file))};
+  return {kind:'image',dataUrl:await imageToJpeg(file)};
+}
+
+// IA (Haiku): devuelve un array de reservas normalizadas desde el contenido del archivo
+async function aiExtractReservas(payload){
+  const instr='Extrae TODAS las reservas de este documento (Booking, Airbnb o reservas directas). Responde SOLO un JSON array, sin markdown. Cada elemento:\n{"guest":"nombre huésped","ci":"YYYY-MM-DD","co":"YYYY-MM-DD","canal":"booking|airbnb|directo","bruto":0.00,"com":0.00,"neto":0.00}\nci=entrada/check-in, co=salida/check-out. bruto=importe total antes de comisión. com=comisión (número positivo). neto=lo que recibe el hostal. Usa null si un dato no aparece. Deduce el canal según el origen del documento. Si no hay reservas, responde [].';
+  const content = payload.kind==='image'
+    ? [{type:'image',source:{type:'base64',media_type:'image/jpeg',data:payload.dataUrl.split(',')[1]}},{type:'text',text:instr}]
+    : [{type:'text',text:'Contenido del archivo:\n'+String(payload.text||'').slice(0,14000)},{type:'text',text:instr}];
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':_anthKey()},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2500,messages:[{role:'user',content}]})});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error('API '+r.status+': '+(e.error?.message||''));}
+  const data=await r.json();
+  const txt=(data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
+  const m=txt.match(/\[[\s\S]*\]/);
+  if(!m)return [];
+  const arr=JSON.parse(m[0]);
+  return Array.isArray(arr)?arr:[];
+}
+
+function _normCanal(c){c=(c||'').toLowerCase();if(c.includes('book'))return 'booking';if(c.includes('air'))return 'airbnb';return 'directo';}
+function _cleanName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();}
+function _guestSim(a,b){a=_cleanName(a);b=_cleanName(b);if(!a||!b)return false;const fa=a.split(' ')[0],fb=b.split(' ')[0];return a===b||a.includes(b)||b.includes(a)||(!!fa&&fa===fb);}
+
+// Compara una reserva del archivo contra el PMS y devuelve un estado
+function reconAgainstPMS(f){
+  if(!RESERVAS_PMS.length)return{icon:'⚪',msg:'Sincroniza el PMS para comparar',color:'var(--text3)',p:null};
+  const cand=RESERVAS_PMS.filter(p=>f.ci&&p.ci&&dayDiff(p.ci,f.ci)<=2);
+  const p=cand.find(x=>_guestSim(x.guest,f.guest))||cand[0]||null;
+  if(!p)return{icon:'🔴',msg:'No está en el PMS',color:'var(--red)',p:null};
+  const amountOk=!p.bruto||!f.bruto||Math.abs(p.bruto-f.bruto)/Math.max(p.bruto,f.bruto)<0.05;
+  const datesOk=dayDiff(p.ci,f.ci)===0&&(!f.co||!p.co||dayDiff(p.co,f.co)===0);
+  if(!amountOk)return{icon:'⚠️',msg:`Importe difiere: PMS ${fn0(p.bruto)} vs archivo ${fn0(f.bruto)}`,color:'var(--gold)',p};
+  if(!datesOk)return{icon:'⚠️',msg:`Fechas difieren: PMS ${p.ci}→${p.co||'?'}`,color:'var(--gold)',p};
+  return{icon:'✅',msg:'Coincide con PMS',color:'var(--green)',p};
+}
+
+function openReconModal(){
+  document.getElementById('recon-list').innerHTML='';
+  document.getElementById('recon-actions').style.display='none';
+  const p=document.getElementById('recon-progress');p.style.display='block';p.textContent='⏳ Preparando…';
+  document.getElementById('mbg-recon').classList.add('open');
+}
+
+async function importReconFiles(inp){
+  const files=Array.from(inp.files||[]);inp.value='';
+  if(!files.length)return;
+  openReconModal();
+  const prog=document.getElementById('recon-progress');
+  if(!RESERVAS_PMS.length){prog.textContent='⏳ Sincronizando PMS…';try{await fetchPMSData();}catch(e){}}
+  _recon=[];let done=0;
+  for(const file of files){
+    prog.style.display='block';prog.textContent=`⏳ Leyendo ${file.name} (${++done}/${files.length})…`;
+    try{
+      const arr=await aiExtractReservas(await fileToReservasPayload(file));
+      arr.forEach(x=>{
+        const bruto=parseFloat(x.bruto)||0;
+        const com=x.com!=null?-Math.abs(parseFloat(x.com)||0):0;
+        const neto=x.neto!=null&&x.neto!==''?parseFloat(x.neto):(bruto+com);
+        const f={guest:x.guest||'—',ci:x.ci||'',co:x.co||'',canal:_normCanal(x.canal),bruto,com,neto,src:file.name,incluir:true};
+        f.recon=reconAgainstPMS(f);
+        f.incluir=f.recon.icon!=='✅';
+        _recon.push(f);
+      });
+    }catch(e){
+      _recon.push({guest:'⚠️ '+file.name,ci:'',co:'',canal:'',bruto:0,com:0,neto:0,src:file.name,incluir:false,recon:{icon:'❌',msg:e.message,color:'var(--red)',p:null}});
+    }
+  }
+  prog.style.display='none';
+  renderReconTable();
+}
+
+function renderReconTable(){
+  const box=document.getElementById('recon-list');
+  if(!_recon.length){box.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">No se detectaron reservas en los archivos.</div>';document.getElementById('recon-actions').style.display='none';return;}
+  const okCount=_recon.filter(f=>f.recon.icon==='✅').length;
+  const difCount=_recon.filter(f=>f.recon.icon==='⚠️').length;
+  const noCount=_recon.filter(f=>f.recon.icon==='🔴').length;
+  let h=`<div style="font-size:11px;margin-bottom:8px">Detectadas <b>${_recon.length}</b> reservas · <span style="color:var(--green)">✅ ${okCount} coinciden</span> · <span style="color:var(--gold)">⚠️ ${difCount} con diferencias</span> · <span style="color:var(--red)">🔴 ${noCount} no están en PMS</span></div>`;
+  h+='<table class="ex" style="width:100%;font-size:11px"><thead><tr><th></th><th>Huésped</th><th>Entrada</th><th>Salida</th><th>Canal</th><th>Bruto</th><th>Estado vs PMS</th></tr></thead><tbody>';
+  _recon.forEach((f,i)=>{
+    const cb=f.recon.icon==='❌'?'':`<input type="checkbox" ${f.incluir?'checked':''} onchange="_recon[${i}].incluir=this.checked">`;
+    h+=`<tr><td>${cb}</td><td>${f.guest}</td><td>${f.ci||'—'}</td><td>${f.co||'—'}</td><td>${f.canal||'—'}</td><td>${f.bruto?fn0(f.bruto):'—'}</td><td style="color:${f.recon.color}">${f.recon.icon} ${f.recon.msg}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  if(RESERVAS_PMS.length){
+    const faltan=RESERVAS_PMS.filter(p=>!_recon.some(f=>f.ci&&p.ci&&dayDiff(p.ci,f.ci)<=2&&_guestSim(p.guest,f.guest)));
+    if(faltan.length){
+      h+=`<div style="margin-top:12px;padding:8px 12px;background:rgba(191,95,74,.1);border:1px solid var(--red);border-radius:6px;font-size:11px;color:var(--red)"><b>${faltan.length}</b> reserva(s) en el PMS que NO aparecen en tus archivos:<br>`+faltan.map(p=>`· ${p.guest||'—'} (${p.ci||'—'}${p.room?' · '+p.room:''}${p.bruto?' · '+fn0(p.bruto):''})`).join('<br>')+'</div>';
+    }
+  }
+  box.innerHTML=h;
+  document.getElementById('recon-actions').style.display='flex';
+}
+
+function importSelectedRecon(){
+  const sel=_recon.filter(f=>f.incluir&&f.bruto);
+  if(!sel.length){notif('No hay reservas seleccionadas');return;}
+  let added=0;
+  sel.forEach(f=>{
+    const dup=RESERVAS.some(r=>r.ci===f.ci&&Math.abs((r.bruto||0)-f.bruto)<0.5&&_guestSim(r.guest,f.guest));
+    if(dup)return;
+    RESERVAS_EXTRA.push({id:'e'+Date.now()+Math.random().toString(36).slice(2),room:(f.recon.p&&f.recon.p.room)||'Sin asignar',guest:f.guest,ci:f.ci,co:f.co||f.ci,canal:f.canal,bruto:f.bruto,com:f.com,neto:f.neto,metodo:f.canal==='directo'?'Bizum/Transf':'OTA'});
+    added++;
+  });
+  RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
+  localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+  closeModals();renderDashboard();
+  if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
+  notif(added?`${added} reserva(s) importada(s)`:'Sin nuevas (ya estaban registradas)');
 }
 
 function openGastoModal(){
