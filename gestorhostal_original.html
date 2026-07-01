@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Matilda's">
+<meta name="theme-color" content="#0d0d0b">
+<title>Hostal Matilda's · 2026</title>
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Hostal%20Matilda%27s%22%2C%22short_name%22%3A%22Matilda%27s%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d0d0b%22%2C%22theme_color%22%3A%22%230d0d0b%22%2C%22start_url%22%3A%22.%22%7D">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// Inline SVG icon as data URL for apple-touch-icon
+(function(){
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='90' fill='%23111009'/><rect x='150' y='272' width='212' height='100' rx='3' fill='%231c1a15' stroke='%23c8a84a' stroke-width='1.2'/><path d='M213 272 L213 202 Q256 160 299 202 L299 272 Z' fill='%231c1a15' stroke='%23c8a84a' stroke-width='1.2'/><path d='M220 272 L220 207 Q256 175 292 207 L292 272' fill='none' stroke='%23c8a84a' stroke-width='0.8' opacity='0.6'/><path d='M244 168 L256 156 L268 168 L264 178 L248 178 Z' fill='%23c8a84a'/><rect x='155' y='230' width='16' height='142' rx='3' fill='%231c1a15' stroke='%23c8a84a' stroke-width='0.7'/><rect x='341' y='230' width='16' height='142' rx='3' fill='%231c1a15' stroke='%23c8a84a' stroke-width='0.7'/><rect x='152' y='226' width='22' height='6' rx='1' fill='%23c8a84a'/><rect x='338' y='226' width='22' height='6' rx='1' fill='%23c8a84a'/><rect x='152' y='270' width='208' height='4' rx='1' fill='%23c8a84a'/><rect x='239' y='326' width='34' height='46' rx='2' fill='%231c1a15' stroke='%23c8a84a' stroke-width='0.8'/><circle cx='256' cy='348' r='2.5' fill='%23c8a84a'/><rect x='230' y='370' width='52' height='3' rx='1' fill='%23c8a84a'/><rect x='110' y='373' width='292' height='1.5' rx='1' fill='%23c8a84a' opacity='0.5'/><circle cx='256' cy='128' r='28' fill='%231a1810' stroke='%23c8a84a' stroke-width='1'/><path d='M244 138 L244 118 L256 130 L268 118 L268 138' fill='none' stroke='%23c8a84a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/><text x='256' y='425' text-anchor='middle' font-family='Georgia,serif' font-size='28' letter-spacing='5' fill='%23e4e0d6'>MATILDA'S</text><text x='256' y='448' text-anchor='middle' font-family='Georgia,serif' font-size='13' letter-spacing='4' fill='%239a9690'>HOSTAL</text><line x1='185' y1='456' x2='225' y2='456' stroke='%23c8a84a' stroke-width='0.8' opacity='0.5'/><circle cx='256' cy='456' r='2' fill='%23c8a84a'/><line x1='287' y1='456' x2='327' y2='456' stroke='%23c8a84a' stroke-width='0.8' opacity='0.5'/></svg>`;
+  const url='data:image/svg+xml,'+svg;
+  const link=document.createElement('link');
+  link.rel='apple-touch-icon';
+  link.href=url;
+  document.head.appendChild(link);
+  const link2=document.createElement('link');
+  link2.rel='icon';
+  link2.type='image/svg+xml';
+  link2.href=url;
+  document.head.appendChild(link2);
+})();
+</script>
+<style>
+:root{
+  --bg:#0d0d0b;--surf:#161614;--surf2:#1e1d1a;--surf3:#252420;
+  --border:#2a2925;--border2:#363430;
+  --gold:#c8a84a;--gold-bg:rgba(200,168,74,.13);
+  --green:#5a9e72;--green-bg:rgba(90,158,114,.13);
+  --red:#bf5f4a;--red-bg:rgba(191,95,74,.13);
+  --blue:#4a82a8;--blue-bg:rgba(74,130,168,.13);
+  --wknd:rgba(200,168,74,.07);
+  --text:#e4e0d6;--text2:#9a9690;--text3:#60605a;
+  --r:10px;--rs:7px;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.4;}
+
+.topbar{position:sticky;top:0;z-index:300;background:var(--surf);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:46px;gap:10px;}
+.logo{font-family:'Playfair Display',serif;font-size:14px;color:var(--gold);white-space:nowrap;flex-shrink:0;}
+.logo span{font-family:'DM Sans',sans-serif;font-size:10px;color:var(--text3);font-weight:300;margin-left:5px;}
+.nav{display:flex;gap:2px;}
+.nb{padding:4px 10px;border-radius:var(--rs);border:none;background:transparent;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;transition:all .15s;white-space:nowrap;}
+.nb.on{background:var(--gold-bg);color:var(--gold);}
+.nb:hover:not(.on){background:var(--surf2);color:var(--text);}
+.wrap{max-width:1340px;margin:0 auto;padding:18px 14px;}
+.page{display:none;}.page.on{display:block;}
+
+/* MOBILE NAV — bottom tab bar */
+@media(max-width:600px){
+  .topbar{padding:0 12px;height:50px;}
+  .logo span{display:none;}
+  .nav{display:none;}
+  .mode-toggle{display:none;}
+  .wrap{padding:12px 10px;padding-bottom:72px;}
+  .bottom-nav{display:flex!important;}
+  .period-row{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:10px;}
+  .period-row::-webkit-scrollbar{display:none;}
+  .pills{flex-wrap:nowrap;}
+  .pr-label{flex-shrink:0;}
+  .ing-btn{font-size:10px;padding:6px 10px;}
+}
+.bottom-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:400;
+  background:var(--surf);border-top:1px solid var(--border);
+  height:58px;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.bnav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;border:none;background:transparent;color:var(--text3);cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:9px;font-weight:600;letter-spacing:.3px;
+  text-transform:uppercase;padding:8px 4px;transition:color .15s;
+}
+.bnav-btn.on{color:var(--gold);}
+.bnav-icon{font-size:18px;line-height:1;}
+
+/* PERIOD PILLS — horizontal scroll on mobile */
+.period-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.pills{display:flex;gap:4px;flex-wrap:wrap;}
+
+.period-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.pr-label{font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.pills{display:flex;gap:4px;flex-wrap:wrap;}
+.pill{padding:4px 11px;border-radius:100px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.pill.on{background:var(--gold);border-color:var(--gold);color:#0d0d0b;}
+.pill:hover:not(.on){background:var(--surf2);color:var(--text);}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+@media(max-width:800px){.kpis{grid-template-columns:repeat(3,1fr);}}
+.kpi{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.g::before{background:var(--green);}
+.kpi.r::before{background:var(--red);}
+.kpi.b::before{background:var(--blue);}
+.kpi.o::before{background:var(--gold);}
+.kpi-lbl{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.kpi-val{font:500 19px/1 var(--mono);}
+.kpi-val.green{color:var(--green);}
+.kpi-val.red{color:var(--red);}
+.kpi-val.blue{color:var(--blue);}
+.kpi-val.gold{color:var(--gold);}
+.kpi-sub{font-size:9px;color:var(--text3);margin-top:4px;}
+
+.balance-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+@media(max-width:700px){.balance-row{grid-template-columns:1fr;}}
+.bal-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;}
+.bal-card-title{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:9px;display:flex;align-items:center;gap:6px;}
+.bal-dot{width:6px;height:6px;border-radius:50%;display:inline-block;}
+.bal-dot.a{background:var(--gold);}
+.bal-dot.q{background:var(--blue);}
+.bal-dot.m{background:var(--green);}
+.bal-r{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);}
+.bal-r:last-of-type{border-bottom:none;}
+.bal-k{font-size:11px;color:var(--text2);}
+.bal-v{font-family:var(--mono);font-size:11px;}
+.bal-v.pos{color:var(--green);}
+.bal-v.neg{color:var(--red);}
+.bal-neto{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid var(--border2);}
+.bal-neto-lbl{font-size:11px;font-weight:700;}
+.bal-neto-val{font-family:var(--mono);font-size:14px;font-weight:700;}
+
+.card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px;}
+.card-title{padding:9px 13px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surf2);}
+.tscroll{overflow-x:auto;}
+
+table.ex{border-collapse:collapse;font-size:11px;min-width:100%;}
+table.ex th{background:var(--surf2);color:var(--text3);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:7px 9px;text-align:right;white-space:nowrap;border-bottom:2px solid var(--border2);}
+table.ex th.L{text-align:left;}
+table.ex th.stk{position:sticky;left:0;z-index:10;background:var(--surf2);}
+table.ex th.ct{background:rgba(200,168,74,.14);color:var(--gold);}
+table.ex td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--text2);}
+table.ex td.L{text-align:left;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text);font-weight:500;}
+table.ex td.stk{position:sticky;left:0;z-index:5;background:var(--surf);}
+table.ex tr:hover td{background:rgba(255,255,255,.025);}
+table.ex tr:hover td.stk{background:#222120;}
+table.ex tr.sec td{background:var(--surf3);font-family:'DM Sans',sans-serif;font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text3);padding:6px 9px;text-align:left;border-top:2px solid var(--border2);}
+table.ex tr.sec td.stk{background:var(--surf3);}
+table.ex tr.sub td{opacity:.7;}
+table.ex tr.sub td.L{padding-left:18px;font-size:10px;color:var(--text3);}
+table.ex tr.rowtot td{background:rgba(255,255,255,.03);font-weight:700;color:var(--text);border-top:1px solid var(--border2);}
+table.ex tr.rowtot td.stk{background:#1e1d1b;}
+table.ex tr.grandtot td{background:rgba(200,168,74,.07);font-weight:700;color:var(--gold);border-top:2px solid rgba(200,168,74,.3);}
+table.ex tr.grandtot td.stk{background:#1c1b14;}
+table.ex tr.netorow td{background:rgba(90,158,114,.07);font-weight:700;color:var(--green);border-top:2px solid rgba(90,158,114,.3);}
+table.ex tr.netorow td.stk{background:#131b15;}
+table.ex td.pos{color:var(--green);}
+table.ex td.neg{color:var(--red);}
+table.ex td.gold{color:var(--gold);}
+table.ex td.dim{color:var(--text3);}
+table.ex td.com{color:var(--red);font-size:10px;}
+table.ex td.ct{background:rgba(200,168,74,.06);color:var(--gold);font-weight:600;}
+table.ex tr.rowtot td.ct{background:rgba(200,168,74,.1);}
+table.ex tr.grandtot td.ct{background:rgba(200,168,74,.18);}
+table.ex tr.netorow td.ct{background:rgba(90,158,114,.14);color:var(--green);}
+tr.coll-detail{display:none;}
+tr.coll-detail.open{display:table-row;}
+tr.coll-hdr{cursor:pointer;}
+tr.coll-hdr:hover td{background:rgba(255,255,255,.04)!important;}
+
+/* HABITACIONES */
+.hab-period-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.gt-wrap{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.gt-head{padding:9px 13px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surf2);}
+.gt-body{padding:10px 14px;}
+
+/* DAY-LEVEL CALENDAR (Airbnb style) */
+.cal-container{overflow-x:auto;padding-bottom:6px;}
+.cal-table-wrap{min-width:600px;}
+.cal-header{display:flex;border-bottom:1px solid var(--border);margin-bottom:2px;}
+.cal-room-col{width:44px;flex-shrink:0;}
+.cal-days-row{display:flex;flex:1;}
+.cal-day-cell{flex:1;min-width:0;text-align:center;font-size:8px;font-weight:600;padding:3px 0;color:var(--text3);border-left:1px solid transparent;}
+.cal-day-cell.weekend{color:var(--gold);background:var(--wknd);}
+.cal-day-cell.month-start{border-left:1px solid var(--border2);}
+.cal-row{display:flex;align-items:center;margin-bottom:3px;}
+.cal-room-label{width:44px;font-size:10px;color:var(--text2);font-weight:600;flex-shrink:0;padding-right:4px;white-space:nowrap;}
+.cal-days{flex:1;display:flex;height:22px;position:relative;}
+.cal-day-bg{flex:1;min-width:0;height:100%;border-left:1px solid transparent;}
+.cal-day-bg.weekend{background:var(--wknd);}
+.cal-day-bg.month-start{border-left:1px solid var(--border2);}
+/* booking bar spans across day cells as absolute */
+.cal-booking{position:absolute;top:2px;height:18px;border-radius:4px;display:flex;align-items:center;overflow:visible;white-space:nowrap;padding:0 4px;cursor:pointer;z-index:2;font-size:9px;font-weight:700;color:#fff;}
+.cal-booking.booking{background:var(--blue);}
+.cal-booking.airbnb{background:#b05040;}
+.cal-booking.directo{background:var(--green);}
+.cal-booking:hover .boc{opacity:1;}
+
+/* bocadillo */
+.boc{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);
+  background:var(--surf3);border:1px solid var(--border2);border-radius:var(--rs);
+  padding:9px 12px;min-width:160px;z-index:600;
+  pointer-events:none;opacity:0;transition:opacity .1s;
+  box-shadow:0 8px 20px rgba(0,0,0,.65);font-family:'DM Sans',sans-serif;}
+.boc-canal{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px;}
+.boc-canal.booking{color:var(--blue);}
+.boc-canal.airbnb{color:#b05040;}
+.boc-canal.directo{color:var(--green);}
+.boc-guest{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.boc-dates{font-size:10px;color:var(--text2);margin-bottom:5px;}
+.boc-r{display:flex;justify-content:space-between;font-size:11px;gap:8px;margin-bottom:2px;}
+.boc-k{color:var(--text3);}
+.boc-v{font-family:var(--mono);}
+.boc-v.g{color:var(--green);}
+.boc-v.r{color:var(--red);}
+.boc-arrow{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:var(--surf3);border-right:1px solid var(--border2);border-bottom:1px solid var(--border2);}
+
+/* hab accordion */
+.hab-wrap{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden;}
+.hab-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;transition:background .15s;}
+.hab-hdr:hover{background:var(--surf2);}
+.hab-name{font-family:'Playfair Display',serif;font-size:13px;color:var(--text);min-width:40px;}
+.hab-stats{display:flex;gap:12px;align-items:center;}
+.hs{text-align:right;}
+.hs-lbl{font-size:9px;color:var(--text3);}
+.hs-val{font-family:var(--mono);font-size:12px;}
+.hab-body{display:none;border-top:1px solid var(--border);}
+.hab-body.open{display:block;}
+.res-tbl{width:100%;border-collapse:collapse;}
+.res-tbl th{background:var(--surf2);color:var(--text3);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:6px 11px;text-align:right;}
+.res-tbl th:first-child{text-align:left;}
+.res-tbl td{padding:6px 11px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-size:11px;color:var(--text2);}
+.res-tbl td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text);}
+.badge{display:inline-block;padding:1px 6px;border-radius:100px;font-size:9px;font-weight:700;}
+.badge.booking{background:var(--blue-bg);color:var(--blue);}
+.badge.airbnb{background:rgba(176,80,64,.15);color:#b05040;}
+.badge.directo{background:var(--green-bg);color:var(--green);}
+
+/* MODE TOGGLE */
+.mode-toggle{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.mode-lbl{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+.mode-lbl.fiscal{color:var(--blue);}
+.mode-lbl.real{color:var(--green);}
+.toggle-wrap{position:relative;width:44px;height:24px;cursor:pointer;}
+.toggle-wrap input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-track{position:absolute;inset:0;border-radius:12px;background:var(--blue);transition:background .25s;}
+.toggle-wrap input:checked ~ .toggle-track{background:var(--green);}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .25s;pointer-events:none;}
+.toggle-wrap input:checked ~ .toggle-track ~ .toggle-thumb{transform:translateX(20px);}
+.mode-badge{display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.3px;}
+.mode-badge.fiscal{background:var(--blue-bg);color:var(--blue);}
+.mode-badge.real{background:var(--green-bg);color:var(--green);}
+
+/* GASTOS */
+.g-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
+.add-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--rs);color:var(--gold);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;transition:all .15s;}
+.add-btn:hover{background:rgba(200,168,74,.22);}
+.g-sec{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;}
+.g-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:var(--surf2);transition:background .15s;}
+.g-hdr:hover{background:var(--surf3);}
+.g-hdr-l{display:flex;align-items:center;gap:7px;}
+.g-arr{font-size:9px;color:var(--text3);transition:transform .2s;display:inline-block;}
+.g-arr.open{transform:rotate(180deg);}
+.g-sec-title{font-size:11px;font-weight:700;color:var(--text);}
+.g-sec-tot{font-family:var(--mono);font-size:12px;color:var(--red);}
+.g-body{display:none;}
+.g-body.open{display:block;}
+.gtbl{width:100%;border-collapse:collapse;}
+.gtbl th{background:var(--surf2);color:var(--text3);font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:7px 12px;text-align:right;}
+.gtbl th:first-child{text-align:left;}
+.gtbl td{padding:7px 12px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-size:11px;color:var(--text2);}
+.gtbl td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text);}
+.gtbl td.neg{color:var(--red);}
+.gtbl tr.tot-r td{font-weight:700;color:var(--text);border-top:1px solid var(--border2);background:rgba(255,255,255,.02);}
+.tag{display:inline-block;padding:2px 6px;border-radius:100px;font-size:9px;font-weight:700;}
+.tag.f{background:var(--blue-bg);color:var(--blue);}
+.tag.v{background:var(--gold-bg);color:var(--gold);}
+.br-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.br-lbl{width:90px;font-size:10px;color:var(--text2);text-transform:capitalize;flex-shrink:0;}
+.br-track{flex:1;height:5px;background:var(--surf2);border-radius:3px;overflow:hidden;}
+.br-fill{height:100%;border-radius:3px;}
+.br-val{font-family:var(--mono);font-size:10px;width:72px;text-align:right;}
+.br-pct{font-size:10px;color:var(--text3);width:30px;text-align:right;}
+
+/* MODE TOGGLE */
+.ing-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--green-bg);border:1px solid var(--green);border-radius:var(--rs);color:var(--green);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;transition:all .15s;}
+.ing-btn:hover{background:rgba(90,158,114,.22);}
+.mode-toggle{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.mode-lbl{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;transition:color .2s;}
+.mode-lbl.l{color:var(--blue);}
+.mode-lbl.r{color:var(--text3);}
+.mode-lbl.l.real{color:var(--text3);}
+.mode-lbl.r.real{color:var(--green);}
+.tw{position:relative;width:42px;height:22px;cursor:pointer;flex-shrink:0;}
+.tw input{opacity:0;width:0;height:0;position:absolute;}
+.tt{position:absolute;inset:0;border-radius:11px;background:var(--blue);transition:background .25s;}
+.tw input:checked ~ .tt{background:var(--green);}
+.th2{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .25s;pointer-events:none;}
+.tw input:checked ~ .tt ~ .th2{transform:translateX(20px);}
+/* PHOTO AREA */
+.photo-area{
+  border:1px dashed var(--border2);border-radius:var(--rs);
+  padding:12px;text-align:center;cursor:pointer;
+  transition:border-color .15s;background:var(--surf2);
+  min-height:52px;display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.photo-area:hover{border-color:var(--gold);}
+.photo-lbl{font-size:11px;color:var(--text3);pointer-events:none;}
+.photo-preview{
+  max-width:100%;max-height:140px;
+  border-radius:var(--rs);object-fit:contain;
+  display:block;margin:0 auto;
+}
+.priv-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);margin-top:4px;}
+.priv-info{font-size:12px;color:var(--text);}
+.priv-info small{display:block;font-size:10px;color:var(--text3);margin-top:2px;}
+.ptw{position:relative;width:40px;height:22px;cursor:pointer;flex-shrink:0;}
+.ptw input{opacity:0;width:0;height:0;position:absolute;}
+.ptt{position:absolute;inset:0;border-radius:11px;background:var(--border2);transition:background .2s;}
+.ptw input:checked ~ .ptt{background:var(--green);}
+.pth{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;pointer-events:none;}
+.ptw input:checked ~ .ptt ~ .pth{transform:translateX(18px);}
+/* real mode indicator strip */
+body.real-mode .topbar{box-shadow:0 1px 0 var(--green);}
+.real-badge{display:none;align-items:center;gap:5px;padding:2px 8px;background:var(--green-bg);border:1px solid var(--green);border-radius:100px;font-size:9px;font-weight:700;color:var(--green);letter-spacing:.3px;}
+body.real-mode .real-badge{display:inline-flex;}
+
+/* INFORME */
+.inf-head{padding:16px 18px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;}
+.inf-title{font-family:'Playfair Display',serif;font-size:17px;color:var(--gold);}
+.inf-per{font-size:11px;color:var(--text2);margin-top:3px;}
+.inf-note{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--text3);background:var(--surf2);padding:2px 8px;border-radius:100px;margin-top:5px;}
+.exp-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--gold);border:none;border-radius:var(--rs);color:#0d0d0b;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+.exp-btn:hover{opacity:.85;}
+.inf-tbl{width:100%;border-collapse:collapse;}
+.inf-tbl th{background:var(--surf2);color:var(--text3);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:7px 11px;text-align:right;}
+.inf-tbl th:first-child{text-align:left;min-width:170px;}
+.inf-tbl td{padding:7px 11px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-size:11px;color:var(--text2);}
+.inf-tbl td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text);}
+.inf-tbl tr.sec td{background:var(--surf2);font-family:'DM Sans',sans-serif;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);}
+.inf-tbl tr.tot td{font-weight:700;border-top:2px solid var(--border2);color:var(--text);}
+.inf-tbl td.pos{color:var(--green);}
+.inf-tbl td.neg{color:var(--red);}
+.inf-tbl td.gold{color:var(--gold);}
+.inf-tbl td.dim{color:var(--text3);font-size:10px;}
+
+/* MODAL */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:700;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+.mbg.open{display:flex;}
+.modal{background:var(--surf2);border:1px solid var(--border2);border-radius:13px;padding:22px;width:100%;max-width:420px;margin:14px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-family:'Playfair Display',serif;font-size:15px;color:var(--gold);margin-bottom:14px;}
+.fg{margin-bottom:10px;}
+.fl{display:block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.fi,.fs{width:100%;padding:8px 10px;background:var(--surf);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;transition:border-color .15s;}
+.fi:focus,.fs:focus{border-color:var(--gold);}
+.fs option{background:var(--surf2);}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tipo-pills{display:flex;gap:5px;margin-top:3px;}
+.tipo-pill{flex:1;padding:6px;border-radius:var(--rs);border:1px solid var(--border2);font-size:11px;cursor:pointer;transition:all .15s;color:var(--text2);background:transparent;font-family:'DM Sans',sans-serif;text-align:center;font-weight:600;}
+.tipo-pill.on.v{background:var(--gold-bg);border-color:var(--gold);color:var(--gold);}
+.tipo-pill.on.f{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);}
+.mpills{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;}
+.mpill{padding:4px 9px;border-radius:100px;border:1px solid var(--border2);font-size:10px;cursor:pointer;transition:all .15s;color:var(--text2);background:transparent;font-family:'DM Sans',sans-serif;}
+.mpill.on{background:var(--gold-bg);border-color:var(--gold);color:var(--gold);}
+.mpill-ing.on{background:var(--green-bg);border-color:var(--green);color:var(--green);}
+.mact{display:flex;gap:7px;margin-top:14px;}
+.btn-ok{flex:1;padding:8px;background:var(--gold);border:none;border-radius:var(--rs);color:#0d0d0b;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.btn-ok.green{background:var(--green);}
+.btn-cl{padding:8px 12px;background:transparent;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;}
+.notif{position:fixed;bottom:18px;right:18px;background:var(--green);color:#fff;padding:9px 16px;border-radius:var(--rs);font-size:11px;font-weight:600;z-index:800;transform:translateY(50px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);}
+.notif.on{transform:translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+<div class="notif" id="notif"></div>
+
+<header class="topbar">
+  <div class="logo">Hostal Matilda's <span>· Contabilidad 2026</span> <span id="sync-dot" style="display:none;width:7px;height:7px;background:var(--green);border-radius:50%;display:none;vertical-align:middle;margin-left:4px" title="Sincronizado con la nube"></span></div>
+  <nav class="nav">
+    <button class="nb on" onclick="nav('dashboard',this)">Dashboard</button>
+    <button class="nb" onclick="nav('habitaciones',this)">Habitaciones</button>
+    <button class="nb" onclick="nav('gastos',this)">Gastos</button>
+    <button class="nb" onclick="nav('informe',this)">Informe Gestora</button>
+  </nav>
+  <div class="mode-toggle">
+    <span class="mode-lbl l" id="lbl-fiscal">FISCAL</span>
+    <label class="tw" title="Cambiar entre vista fiscal y real">
+      <input type="checkbox" id="mode-switch" onchange="setMode(this.checked)">
+      <div class="tt"></div>
+      <div class="th2"></div>
+    </label>
+    <span class="mode-lbl r" id="lbl-real">REAL</span>
+    <span class="real-badge" id="real-badge">● REAL</span>
+  </div>
+</header>
+
+<!-- BOTTOM NAV (mobile only) -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bnav-btn on" id="bn-dashboard" onclick="nav('dashboard',null)">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="bnav-btn" id="bn-habitaciones" onclick="nav('habitaciones',null)">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Habs.
+  </button>
+  <button class="bnav-btn" id="bn-gastos" onclick="nav('gastos',null)">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+    Gastos
+  </button>
+  <button class="bnav-btn" id="bn-informe" onclick="nav('informe',null)">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Informe
+  </button>
+  <button class="bnav-btn" id="bn-mode" onclick="toggleModeBtn()" style="flex:0 0 64px">
+    <div id="bn-mode-track" style="width:36px;height:20px;border-radius:10px;background:var(--blue);position:relative;transition:background .25s;margin-bottom:2px">
+      <div id="bn-mode-thumb" style="position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .25s"></div>
+    </div>
+    <span id="bn-mode-lbl" style="font-size:8px;color:var(--blue)">FISCAL</span>
+  </button>
+</nav>
+<div class="page on" id="page-dashboard">
+<div class="wrap">
+  <div class="period-row">
+    <span class="pr-label">Ver</span>
+    <div class="pills">
+      <button class="pill"     onclick="setPeriod('year',this)">Año</button>
+      <button class="pill on"  onclick="setPeriod('q1',this)">Q1</button>
+      <button class="pill"     onclick="setPeriod('q2',this)">Q2</button>
+      <button class="pill"     onclick="setPeriod('q3',this)">Q3</button>
+      <button class="pill"     onclick="setPeriod('q4',this)">Q4</button>
+      <button class="pill"     onclick="setPeriod('1',this)">Ene</button>
+      <button class="pill"     onclick="setPeriod('2',this)">Feb</button>
+      <button class="pill"     onclick="setPeriod('3',this)">Mar</button>
+      <button class="pill"     onclick="setPeriod('4',this)">Abr</button>
+    </div>
+    <button class="ing-btn" onclick="openIngModal()" style="margin-left:auto">+ Añadir ingreso</button>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="balance-row" id="bal-cards"></div>
+  <div class="card">
+    <div class="card-title" id="exc-title">Vista global</div>
+    <div class="tscroll"><table class="ex" id="exc"></table></div>
+  </div>
+</div>
+</div>
+
+<!-- HABITACIONES -->
+<div class="page" id="page-habitaciones">
+<div class="wrap">
+  <div class="hab-period-row">
+    <span class="pr-label">Período</span>
+    <div class="pills" id="hab-pills">
+      <button class="pill on" onclick="setHP('q1',this)">Q1</button>
+      <button class="pill" onclick="setHP('q2',this)">Q2</button>
+      <button class="pill" onclick="setHP('q3',this)">Q3</button>
+      <button class="pill" onclick="setHP('q4',this)">Q4</button>
+      <button class="pill" onclick="setHP('1',this)">Ene</button>
+      <button class="pill" onclick="setHP('2',this)">Feb</button>
+      <button class="pill" onclick="setHP('3',this)">Mar</button>
+      <button class="pill" onclick="setHP('4',this)">Abr</button>
+      <button class="pill" onclick="setHP('5',this)">May</button>
+      <button class="pill" onclick="setHP('6',this)">Jun</button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
+    <button class="add-btn" id="pms-sync-btn" onclick="fetchPMSData()" style="background:var(--blue-bg);border-color:var(--blue);color:var(--blue)">⟳ Sync PMS</button>
+    <span id="pms-sync-info" style="font-size:10px;color:var(--text3)"></span>
+  </div>
+  <div id="recon-banner"></div>
+  <div class="gt-wrap">
+    <div class="gt-head" id="gt-head">Ocupación Q1 · Todas las habitaciones</div>
+    <div class="gt-body">
+      <div class="cal-container"><div class="cal-table-wrap" id="cal-global"></div></div>
+    </div>
+  </div>
+  <div id="hab-list"></div>
+</div>
+</div>
+
+<!-- GASTOS -->
+<div class="page" id="page-gastos">
+<div class="wrap">
+  <div class="g-topbar">
+    <div style="font-family:'Playfair Display',serif;font-size:15px" id="gastos-title">Gastos 2026</div>
+    <div style="display:flex;gap:8px">
+      <button class="add-btn" style="background:var(--blue-bg);border-color:var(--blue);color:var(--blue)" onclick="openFijoModal()">+ Añadir fijo</button>
+      <button class="add-btn" onclick="openGastoModal()">+ Añadir variable</button>
+    </div>
+  </div>
+  <div class="hab-period-row">
+    <span class="pr-label">Ver</span>
+    <div class="pills" id="gasto-pills">
+      <button class="pill on" onclick="setGP('year',this)">Año</button>
+      <button class="pill" onclick="setGP('q1',this)">Q1</button>
+      <button class="pill" onclick="setGP('q2',this)">Q2</button>
+      <button class="pill" onclick="setGP('q3',this)">Q3</button>
+      <button class="pill" onclick="setGP('q4',this)">Q4</button>
+      <button class="pill" onclick="setGP('1',this)">Ene</button>
+      <button class="pill" onclick="setGP('2',this)">Feb</button>
+      <button class="pill" onclick="setGP('3',this)">Mar</button>
+      <button class="pill" onclick="setGP('4',this)">Abr</button>
+      <button class="pill" onclick="setGP('5',this)">May</button>
+      <button class="pill" onclick="setGP('6',this)">Jun</button>
+      <button class="pill" onclick="setGP('7',this)">Jul</button>
+    </div>
+  </div>
+  <div class="g-sec">
+    <div class="g-hdr" onclick="toggleG('f')"><div class="g-hdr-l"><span class="g-arr" id="arr-f">▼</span><span class="g-sec-title">Gastos Fijos</span><span class="tag f" style="margin-left:4px">Sistema + propios</span></div><div style="display:flex;align-items:center;gap:10px"><span class="edit-link" onclick="event.stopPropagation();resetFijos()" title="Restaurar fijos del sistema">↺ restaurar</span><span class="g-sec-tot" id="tot-f"></span></div></div>
+    <div class="g-body" id="body-f"></div>
+  </div>
+  <div class="g-sec">
+    <div class="g-hdr" onclick="toggleG('v')"><div class="g-hdr-l"><span class="g-arr" id="arr-v">▼</span><span class="g-sec-title">Gastos Variables</span></div><span class="g-sec-tot" id="tot-v"></span></div>
+    <div class="g-body" id="body-v"></div>
+  </div>
+  <div class="g-sec">
+    <div class="g-hdr" onclick="toggleG('c')"><div class="g-hdr-l"><span class="g-arr open" id="arr-c">▼</span><span class="g-sec-title" id="conc-title">Por concepto · Año</span></div><span class="g-sec-tot" id="tot-c"></span></div>
+    <div class="g-body open" id="body-c"><div style="padding:14px 18px" id="conc-bars"></div></div>
+  </div>
+</div>
+</div>
+
+<!-- INFORME -->
+<div class="page" id="page-informe">
+<div class="wrap">
+  <div class="card">
+    <div class="inf-head">
+      <div>
+        <div class="inf-title">Informe Gestora · Hostal Matilda's</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <span class="pr-label">Período</span>
+          <div class="pills" id="inf-pills">
+            <button class="pill on" onclick="setInfPeriod('q1',this)">1T · Ene–Mar</button>
+            <button class="pill" onclick="setInfPeriod('q2',this)">2T · Abr–Jun</button>
+            <button class="pill" onclick="setInfPeriod('q3',this)">3T · Jul–Sep</button>
+            <button class="pill" onclick="setInfPeriod('q4',this)">4T · Oct–Dic</button>
+          </div>
+        </div>
+        <div class="inf-note" style="margin-top:6px;">ℹ Gastos fijos precargados · Modo: <span id="inf-mode-badge" style="color:var(--blue);font-weight:700">FISCAL</span></div>
+      </div>
+      <button class="exp-btn" onclick="exportCSV()">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
+      </button>
+      <button class="exp-btn" onclick="exportPDF()" style="background:var(--red-bg);border-color:var(--red);color:var(--red)">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        PDF
+      </button>
+    </div>
+    <div class="tscroll"><table class="inf-tbl" id="inf-tbl"></table></div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL GASTO -->
+<div class="mbg" id="mbg-gasto">
+  <div class="modal">
+    <div class="modal-title">Añadir gasto</div>
+    <div class="fg"><label class="fl">Tipo</label>
+      <div class="tipo-pills">
+        <button type="button" class="tipo-pill v on" onclick="setTipo('v',this)">Variable</button>
+        <button type="button" class="tipo-pill f" onclick="setTipo('f',this)">Fijo recurrente</button>
+      </div>
+    </div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Fecha</label><input type="date" class="fi" id="g-fecha"></div>
+      <div class="fg"><label class="fl">Importe (€)</label><input type="number" class="fi" id="g-imp" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="fg"><label class="fl">Concepto</label><input type="text" class="fi" id="g-con"></div>
+    <div class="fg"><label class="fl">Categoría</label>
+      <select class="fs" id="g-cat">
+        <option value="limpieza">Limpieza</option>
+        <option value="lavanderia">Lavandería</option>
+        <option value="mantenimiento">Mantenimiento</option>
+        <option value="suministros">Suministros</option>
+        <option value="tecnologia">Tecnología</option>
+        <option value="fiscal">Fiscal</option>
+        <option value="financiero">Financiero</option>
+        <option value="inmueble">Inmueble</option>
+        <option value="otros">Otros</option>
+      </select>
+    </div>
+    <div class="fg" id="g-recur-wrap">
+      <label class="fl">Recurrencia</label>
+      <div class="recur-pills" id="rpills">
+        <button type="button" class="rpill on" data-r="none" onclick="setRecur('none',this)">Sin recurrencia</button>
+        <button type="button" class="rpill" data-r="monthly" onclick="setRecur('monthly',this)">Mensual</button>
+        <button type="button" class="rpill" data-r="quarterly" onclick="setRecur('quarterly',this)">Trimestral</button>
+        <button type="button" class="rpill" data-r="4monthly" onclick="setRecur('4monthly',this)">Cuatrimestral</button>
+        <button type="button" class="rpill" data-r="annual" onclick="setRecur('annual',this)">Anual</button>
+      </div>
+      <div id="g-range-wrap" style="display:none;margin-top:8px;">
+        <div class="fr2">
+          <div class="fg" style="margin-bottom:0"><label class="fl">Desde</label><input type="month" class="fi" id="g-desde" value="2026-01"></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl">Hasta</label><input type="month" class="fi" id="g-hasta" value="2026-12"></div>
+        </div>
+      </div>
+    </div>
+      <div class="fg">
+      <label class="fl">Justificante — escaneado automático</label>
+      <div class="photo-area" id="photo-drop" onclick="document.getElementById('g-foto').click()">
+        <input type="file" id="g-foto" accept="image/*,.pdf,.heic,.heif" onchange="previewFoto(this)" style="display:none">
+        <div class="photo-lbl" id="photo-lbl-text">📷 Toca para fotografiar el ticket · Los datos se rellenan solos</div>
+        <div id="ocr-spinner" style="display:none;padding:10px;text-align:center;font-size:11px;color:var(--gold)">
+          <div style="margin-bottom:6px">⏳ Leyendo ticket...</div>
+        </div>
+        <img id="foto-preview" class="photo-preview" style="display:none">
+        <div id="ocr-result" style="display:none;margin-top:8px;padding:8px;background:var(--green-bg);border-radius:var(--rs);font-size:11px;color:var(--green)"></div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Método de pago</label>
+      <div class="mpills" id="mpills-g">
+        <button type="button" class="mpill on" data-m="bizum" onclick="pickMet(this,'mpills-g','g')">Bizum</button>
+        <button type="button" class="mpill" data-m="transferencia" onclick="pickMet(this,'mpills-g','g')">Transferencia</button>
+        <button type="button" class="mpill" data-m="tarjeta" onclick="pickMet(this,'mpills-g','g')">Tarjeta/Pasarela</button>
+        <button type="button" class="mpill" data-m="metalico" onclick="pickMet(this,'mpills-g','g')">Metálico</button>
+        <button type="button" class="mpill" data-m="cripto" onclick="pickMet(this,'mpills-g','g')">Cripto</button>
+        <button type="button" class="mpill" data-m="wise" onclick="pickMet(this,'mpills-g','g')">Wise</button>
+      </div>
+    </div>
+    <div class="priv-row">
+      <div class="priv-info">Solo para mí (no declarar)
+        <small>No aparecerá en el informe de la gestora</small>
+      </div>
+      <label class="ptw">
+        <input type="checkbox" id="g-privado">
+        <div class="ptt"></div>
+        <div class="pth"></div>
+      </label>
+    </div>
+    <div class="mact">
+      <button class="btn-cl" onclick="closeModals()">Cancelar</button>
+      <button class="btn-ok" onclick="saveGasto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INGRESO -->
+<div class="mbg" id="mbg-ing">
+  <div class="modal">
+    <div class="modal-title" style="color:var(--green)" id="ing-modal-title">Añadir ingreso</div>
+    <div class="fg"><label class="fl">Habitación</label>
+      <select class="fs" id="i-room">
+        <option>HB 1</option><option>HB 2</option><option>HB 3</option><option>HB 4</option>
+        <option>HB 5</option><option>HB 6</option><option>HB 7</option><option>HB 8</option><option>HB 9</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Huésped</label><input type="text" class="fi" id="i-guest" placeholder="Nombre huésped"></div>
+    <div class="fg"><label class="fl">Canal</label>
+      <div class="tipo-pills">
+        <button type="button" class="tipo-pill v on" style="--gold:var(--blue);--gold-bg:var(--blue-bg)" onclick="setCanal('booking',this)">Booking</button>
+        <button type="button" class="tipo-pill v" style="--gold:#b05040;--gold-bg:rgba(176,80,64,.13)" onclick="setCanal('airbnb',this)">Airbnb</button>
+        <button type="button" class="tipo-pill v" onclick="setCanal('directo',this)">Directo</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">¿Es recurrente mensual?</label>
+      <div class="tipo-pills" id="ing-recur-pills">
+        <button type="button" class="tipo-pill v on" onclick="setIngRecur(false,this)">Una sola vez</button>
+        <button type="button" class="tipo-pill f" onclick="setIngRecur(true,this)">Mensual (rango)</button>
+      </div>
+    </div>
+    <div id="i-range-wrap" style="display:none">
+      <div class="fr2" style="margin-bottom:10px">
+        <div class="fg" style="margin-bottom:0"><label class="fl">Desde</label><input type="month" class="fi" id="i-desde" value="2026-01"></div>
+        <div class="fg" style="margin-bottom:0"><label class="fl">Hasta</label><input type="month" class="fi" id="i-hasta" value="2026-12"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Crea una reserva por cada mes en el rango indicado</div>
+    </div>
+    <div id="i-dates-wrap">
+    <div class="fr2">
+      <div class="fg"><label class="fl">Fecha entrada</label><input type="date" class="fi" id="i-ci"></div>
+      <div class="fg"><label class="fl">Fecha salida</label><input type="date" class="fi" id="i-co"></div>
+    </div>
+    </div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Precio bruto (€)</label><input type="number" class="fi" id="i-bruto" placeholder="0.00" step="0.01" oninput="calcCom()"></div>
+      <div class="fg"><label class="fl">Comisión (€)</label><input type="number" class="fi" id="i-com" placeholder="0.00" step="0.01" oninput="calcNeto()"></div>
+    </div>
+    <div class="fg"><label class="fl">Neto a cobrar (€)</label><input type="number" class="fi" id="i-neto" placeholder="0.00" step="0.01"></div>
+    <div class="fg"><label class="fl">Método de cobro</label>
+      <div class="mpills" id="mpills-i">
+        <button type="button" class="mpill mpill-ing on" data-m="booking/airbnb" onclick="pickMet(this,'mpills-i','i')">OTA (auto)</button>
+        <button type="button" class="mpill mpill-ing" data-m="bizum" onclick="pickMet(this,'mpills-i','i')">Bizum</button>
+        <button type="button" class="mpill mpill-ing" data-m="transferencia" onclick="pickMet(this,'mpills-i','i')">Transferencia</button>
+        <button type="button" class="mpill mpill-ing" data-m="metalico" onclick="pickMet(this,'mpills-i','i')">Metálico</button>
+        <button type="button" class="mpill mpill-ing" data-m="pasarela" onclick="pickMet(this,'mpills-i','i')">Pasarela</button>
+        <button type="button" class="mpill mpill-ing" data-m="cripto" onclick="pickMet(this,'mpills-i','i')">Cripto</button>
+      </div>
+    </div>
+    <div class="priv-row">
+      <div class="priv-info">Solo para mí (no declarar)
+        <small>No aparecerá en el informe de la gestora</small>
+      </div>
+      <label class="ptw">
+        <input type="checkbox" id="i-privado">
+        <div class="ptt"></div>
+        <div class="pth"></div>
+      </label>
+    </div>
+    <div class="mact">
+      <button class="btn-cl" onclick="closeModals()">Cancelar</button>
+      <button class="btn-ok green" onclick="saveIngreso()">Guardar ingreso</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════ DATA ═══════════
+const ROOMS=['HB 1','HB 2','HB 3','HB 4','HB 5','HB 6','HB 7','HB 8','HB 9'];
+// HB2=Matilda's, HB4=Catedral, HB6=Roma, HB8=Venecia, HB9=Murano
+const ROOM_NAME={
+  'HB 1':'HB 1','HB 2':'HB 2 (Matilda\'s)','HB 3':'HB 3',
+  'HB 4':'HB 4 (Catedral)','HB 5':'HB 5','HB 6':'HB 6 (Roma)',
+  'HB 7':'HB 7','HB 8':'HB 8 (Venecia)','HB 9':'HB 9 (Murano)'
+};
+const Q1=[1,2,3];
+const ML={1:'Ene',2:'Feb',3:'Mar',4:'Abr',5:'May',6:'Jun',7:'Jul',8:'Ago',9:'Sep',10:'Oct',11:'Nov',12:'Dic'};
+
+// RESERVAS Q1 2026 — fuente: Excel (neto/canal/hab) + CSVs OTAs (guest/bruto/com)
+// Verificado: totales Booking por mes = Jan 668, Feb 1557.73, Mar 779 ✓
+const RESERVAS_BASE = [
+  // HB2 (Matilda's) — Booking
+  {id:'b-hb2-01',room:'HB 2',guest:'Celia Mazariegos',    ci:'2026-01-30',co:'2026-02-01',canal:'booking',bruto:99,    com:-14.85,neto:79.47},
+  {id:'b-hb2-02',room:'HB 2',guest:'Adrian Pardo',        ci:'2026-02-06',co:'2026-02-08',canal:'booking',bruto:108,   com:-16.20,neto:86.70},
+  {id:'b-hb2-03',room:'HB 2',guest:'Aitor Del Valle',     ci:'2026-02-13',co:'2026-02-15',canal:'booking',bruto:108,   com:-16.20,neto:86.70},
+  {id:'b-hb2-04',room:'HB 2',guest:'Blanco Alex',         ci:'2026-02-27',co:'2026-03-02',canal:'booking',bruto:165,   com:-24.75,neto:132.45},
+  {id:'b-hb2-05',room:'HB 2',guest:'Mjose Sánchez',       ci:'2026-02-27',co:'2026-03-01',canal:'booking',bruto:99,    com:-14.85,neto:79.47},
+  {id:'b-hb2-06',room:'HB 2',guest:'Mathilde Berenga',    ci:'2026-03-18',co:'2026-03-21',canal:'booking',bruto:150,   com:-22.50,neto:120.42},
+  // HB3 — Directo Bizum (largo plazo)
+  {id:'d-hb3-01',room:'HB 3',guest:'Inquilino HB3',       ci:'2026-01-01',co:'2026-01-31',canal:'directo', bruto:432,  com:0,neto:432,metodo:'Bizum/Transf'},
+  {id:'d-hb3-02',room:'HB 3',guest:'Inquilino HB3',       ci:'2026-02-01',co:'2026-02-28',canal:'directo', bruto:432,  com:0,neto:432,metodo:'Bizum/Transf'},
+  {id:'d-hb3-03',room:'HB 3',guest:'Inquilino HB3',       ci:'2026-03-01',co:'2026-03-31',canal:'directo', bruto:432,  com:0,neto:432,metodo:'Bizum/Transf'},
+  // HB4 (Catedral) — Directo Bizum
+  {id:'d-hb4-01',room:'HB 4',guest:'Inquilino HB4',       ci:'2026-01-01',co:'2026-01-31',canal:'directo', bruto:463,  com:0,neto:463,metodo:'Bizum/Transf'},
+  {id:'d-hb4-02',room:'HB 4',guest:'Inquilino HB4',       ci:'2026-02-01',co:'2026-02-28',canal:'directo', bruto:463,  com:0,neto:463,metodo:'Bizum/Transf'},
+  {id:'d-hb4-03',room:'HB 4',guest:'Inquilino HB4',       ci:'2026-03-01',co:'2026-03-31',canal:'directo', bruto:463,  com:0,neto:463,metodo:'Bizum/Transf'},
+  // HB5 — Directo Bizum
+  {id:'d-hb5-01',room:'HB 5',guest:'Inquilino HB5',       ci:'2026-01-01',co:'2026-01-31',canal:'directo', bruto:402,  com:0,neto:402,metodo:'Bizum/Transf'},
+  {id:'d-hb5-02',room:'HB 5',guest:'Inquilino HB5',       ci:'2026-02-01',co:'2026-02-28',canal:'directo', bruto:402,  com:0,neto:402,metodo:'Bizum/Transf'},
+  {id:'d-hb5-03',room:'HB 5',guest:'Inquilino HB5',       ci:'2026-03-01',co:'2026-03-31',canal:'directo', bruto:402,  com:0,neto:402,metodo:'Bizum/Transf'},
+  // HB6 (Roma) — Airbnb
+  {id:'a-hb6-01',room:'HB 6',guest:'Luis Vera Hernández', ci:'2026-01-23',co:'2026-01-25',canal:'airbnb',  bruto:108,  com:-3.92,neto:104.08},
+  {id:'a-hb6-02',room:'HB 6',guest:'Arwin Harahap',       ci:'2026-02-13',co:'2026-02-15',canal:'airbnb',  bruto:108,  com:-3.92,neto:104.08},
+  // HB6 (Roma) — Booking
+  {id:'b-hb6-01',room:'HB 6',guest:'Paul Monier',         ci:'2026-01-02',co:'2026-01-04',canal:'booking', bruto:120,  com:-18.00,neto:96.33},
+  {id:'b-hb6-02',room:'HB 6',guest:'Noelia Cabel',        ci:'2026-02-06',co:'2026-02-08',canal:'booking', bruto:220,  com:-33.00,neto:176.60},
+  {id:'b-hb6-03',room:'HB 6',guest:'Marina Oliver',       ci:'2026-02-06',co:'2026-02-08',canal:'booking', bruto:110,  com:-16.50,neto:88.30},
+  {id:'b-hb6-04',room:'HB 6',guest:'Josselyn Ruiz',       ci:'2026-02-13',co:'2026-02-15',canal:'booking', bruto:110,  com:-16.50,neto:88.30},
+  {id:'b-hb6-05',room:'HB 6',guest:'Victoria Pérez',      ci:'2026-02-20',co:'2026-02-23',canal:'booking', bruto:165,  com:-24.75,neto:132.45},
+  {id:'b-hb6-06',room:'HB 6',guest:'Sandra Hernández',    ci:'2026-03-06',co:'2026-03-09',canal:'booking', bruto:150,  com:-22.50,neto:120.42},
+  {id:'b-hb6-07',room:'HB 6',guest:'Winslow Land',        ci:'2026-03-13',co:'2026-03-15',canal:'booking', bruto:100,  com:-15.00,neto:80.28},
+  // HB8 (Venecia) — Booking
+  {id:'b-hb8-01',room:'HB 8',guest:'Sandra Torrico',      ci:'2026-01-02',co:'2026-01-04',canal:'booking', bruto:110,  com:-16.50,neto:88.30},
+  {id:'b-hb8-02',room:'HB 8',guest:'Alba Rebaque',        ci:'2026-01-16',co:'2026-01-18',canal:'booking', bruto:96,   com:-14.40,neto:77.06},
+  {id:'b-hb8-03',room:'HB 8',guest:'Leyre Segura',        ci:'2026-02-13',co:'2026-02-15',canal:'booking', bruto:110,  com:-16.50,neto:88.30},
+  {id:'b-hb8-04',room:'HB 8',guest:'Rosario Acosta',      ci:'2026-02-21',co:'2026-02-22',canal:'booking', bruto:32.73,com:-4.91, neto:26.27},
+  {id:'b-hb8-05',room:'HB 8',guest:'Carneiro Renata',     ci:'2026-02-18',co:'2026-02-22',canal:'booking', bruto:220,  com:-33.00,neto:176.61},
+  {id:'b-hb8-06',room:'HB 8',guest:'Eva Martín',          ci:'2026-03-13',co:'2026-03-15',canal:'booking', bruto:90,   com:-13.50,neto:72.25},
+  {id:'b-hb8-07',room:'HB 8',guest:'Midori Kouno',        ci:'2026-03-21',co:'2026-03-23',canal:'booking', bruto:100,  com:-15.00,neto:80.28},
+  // HB9 (Murano) — Airbnb
+  {id:'a-hb9-01',room:'HB 9',guest:'Maria Jose Rodriguez',ci:'2026-02-08',co:'2026-02-28',canal:'airbnb',  bruto:416.25,com:-15.11,neto:401.14},
+  {id:'a-hb9-02',room:'HB 9',guest:'Mathilde',            ci:'2026-02-28',co:'2026-04-01',canal:'airbnb',  bruto:162,  com:-5.44, neto:156.56},
+  // HB9 (Murano) — Booking
+  {id:'b-hb9-01',room:'HB 9',guest:'(sin nombre)',        ci:'2026-01-02',co:'2026-01-05',canal:'booking', bruto:147,  com:-22.05,neto:118.01},
+  {id:'b-hb9-02',room:'HB 9',guest:'Juan Blazquez',       ci:'2026-01-16',co:'2026-01-18',canal:'booking', bruto:96,   com:-14.40,neto:77.06},
+  {id:'b-hb9-03',room:'HB 9',guest:'Jorge Jiménez',       ci:'2026-02-27',co:'2026-03-01',canal:'booking', bruto:110,  com:-16.50,neto:88.30},
+  {id:'b-hb9-04',room:'HB 9',guest:'Javier Hernández',    ci:'2026-03-06',co:'2026-03-08',canal:'booking', bruto:99,   com:-14.85,neto:79.47},
+  {id:'b-hb9-05',room:'HB 9',guest:'Alejandra Catala',    ci:'2026-03-19',co:'2026-03-21',canal:'booking', bruto:90,   com:-13.50,neto:72.25},
+];
+
+let RESERVAS_EXTRA = JSON.parse(localStorage.getItem('ing_extra')||'[]');
+let RESERVAS = [...RESERVAS_BASE, ...RESERVAS_EXTRA];
+
+let RESERVAS_PMS = [];
+let pmsLastSync = null;
+const PMS_URL = 'https://web-production-10bda.up.railway.app';
+
+// GASTOS FIJOS — 12 meses
+// Comunidad sólo en GF (eliminada de GV), luz en GF, Club Innova mensual, Claude en GF
+const GASTOS_FIJOS_DEFAULT=[
+  {id:'gf01',n:'Autónomos',              cat:'fiscal',      sys:true, m:{1:301.63,2:301.63,3:301.63,4:301.63,5:301.63,6:301.63,7:301.63,8:301.63,9:301.63,10:301.63,11:301.63,12:301.63}},
+  {id:'gf02',n:'Hipoteca',               cat:'financiero',  sys:true, m:{1:376.58,2:376.58,3:376.58,4:376.58,5:376.58,6:376.58,7:376.58,8:376.58,9:376.58,10:376.58,11:376.58,12:376.58}},
+  {id:'gf03',n:'Comunidad',              cat:'inmueble',    sys:true, m:{1:17.98,2:17.98,3:17.98,4:17.98,5:17.98,6:17.98,7:17.98,8:17.98,9:17.98,10:17.98,11:17.98,12:17.98}},
+  {id:'gf04',n:'Seguro',                 cat:'inmueble',    sys:true, m:{1:0,2:443.63,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0}},
+  {id:'gf05',n:'IBI Anual',              cat:'fiscal',      sys:true, m:{1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:620.76,10:0,11:0,12:0}},
+  {id:'gf06',n:'Luz (Octopus/Reazziona)',cat:'suministros', sys:true, m:{1:553.82,2:483.88,3:348,4:300,5:280,6:260,7:320,8:380,9:300,10:260,11:300,12:420}},
+  {id:'gf07',n:'WiFi (Simyo/Digi)',      cat:'suministros', sys:true, m:{1:27.99,2:27.99,3:12,4:12,5:12,6:12,7:12,8:12,9:12,10:12,11:12,12:12}},
+  {id:'gf08',n:'IMOU (cámaras)',         cat:'tecnologia',  sys:true, m:{1:3.49,2:3.49,3:3.49,4:3.49,5:3.49,6:3.49,7:3.49,8:3.49,9:3.49,10:3.49,11:3.49,12:3.49}},
+  {id:'gf09',n:'ProtonVPN',              cat:'tecnologia',  sys:true, m:{1:9.99,2:9.99,3:9.99,4:9.99,5:9.99,6:9.99,7:9.99,8:9.99,9:9.99,10:9.99,11:9.99,12:9.99}},
+  {id:'gf10',n:'ChatGPT',                cat:'tecnologia',  sys:true, m:{1:20,2:20,3:20,4:20,5:20,6:20,7:20,8:20,9:20,10:20,11:20,12:20}},
+  {id:'gf11',n:'ONE&ONE (hosting)',      cat:'tecnologia',  sys:true, m:{1:1.21,2:1.21,3:1.21,4:1.21,5:1.21,6:1.21,7:1.21,8:1.21,9:1.21,10:1.21,11:1.21,12:1.21}},
+  {id:'gf12',n:'Club Innova IA',         cat:'tecnologia',  sys:true, m:{1:20,2:20,3:20,4:20,5:20,6:20,7:20,8:20,9:20,10:20,11:20,12:20}},
+  {id:'gf13',n:'Claude Pro (anual/12)',  cat:'tecnologia',  sys:true, m:{1:15,2:15,3:15,4:15,5:15,6:15,7:15,8:15,9:15,10:15,11:15,12:15}},
+];
+// Merge system defaults with user-added/edited fijos from localStorage
+function loadGastosFijos(){
+  const saved=JSON.parse(localStorage.getItem('gf6')||'null');
+  if(!saved) return GASTOS_FIJOS_DEFAULT.slice();
+  // Keep system ones, merge with user-deleted flags and user-added entries
+  const deletedIds=new Set(JSON.parse(localStorage.getItem('gf_deleted')||'[]'));
+  const userAdded=saved.filter(g=>!g.sys);
+  const systemFiltered=GASTOS_FIJOS_DEFAULT.filter(g=>!deletedIds.has(g.id));
+  // Merge user edits to system entries
+  return [...systemFiltered.map(g=>{
+    const edit=saved.find(s=>s.id===g.id);
+    return edit?{...g,...edit}:g;
+  }), ...userAdded];
+}
+let GASTOS_FIJOS=loadGastosFijos();
+function saveGastosFijos(){localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));}
+
+// GASTOS VARIABLES — fuente: gastos_1t.xlsx
+// Eliminados: persianas, reembolso IONOS, batidora Carrefour 36€, cuota comunidad (está en fijos), luz (en fijos)
+let GASTOS_VAR = JSON.parse(localStorage.getItem('gv5')||'null') || [
+  {id:'gv01',n:'Compras bazar',               cat:'suministros',   fecha:'2026-02-13',importe:7.94,  metodo:'metalico',tipo:'v'},
+  {id:'gv02',n:'Lavadora + transporte Milar', cat:'mantenimiento', fecha:'2026-01-30',importe:304,   metodo:'tarjeta', tipo:'v'},
+  {id:'gv03',n:'Compras Lidl',                cat:'suministros',   fecha:'2026-02-17',importe:47.43, metodo:'tarjeta', tipo:'v'},
+  {id:'gv04',n:'Gasóleo A',                   cat:'suministros',   fecha:'2026-01-12',importe:33.72, metodo:'tarjeta', tipo:'v'},
+  {id:'gv05',n:'Batidora Carrefour (Feb)',     cat:'suministros',   fecha:'2026-02-25',importe:27.99, metodo:'tarjeta', tipo:'v'},
+  {id:'gv06',n:'Pintura Titan',               cat:'mantenimiento', fecha:'2026-03-30',importe:53.20, metodo:'tarjeta', tipo:'v'},
+  {id:'gv07',n:'Bazar China',                 cat:'suministros',   fecha:'2026-01-29',importe:5.25,  metodo:'metalico',tipo:'v'},
+  {id:'gv08',n:'Candado Miniso',              cat:'suministros',   fecha:'2026-01-08',importe:2.99,  metodo:'metalico',tipo:'v'},
+  {id:'gv09',n:'Alcachofa ducha',             cat:'mantenimiento', fecha:'2026-02-06',importe:3.50,  metodo:'metalico',tipo:'v'},
+  {id:'gv10',n:'Claude créditos API',         cat:'tecnologia',    fecha:'2026-03-27',importe:6.05,  metodo:'tarjeta', tipo:'v'},
+];
+
+// ═══════════ HELPERS ═══════════
+function fn(n){if(!n&&n!==0)return'—';if(n===0)return'—';return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+'€';}
+function fn0(n){return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)+'€';}
+function pdate(s){return new Date(s+'T00:00:00');}
+function getMes(r){return pdate(r.ci).getMonth()+1;}
+// ═══════════ MODE (fiscal / real) ═══════════
+let IS_REAL = false;
+
+function toggleModeBtn(){
+  const sw=document.getElementById('mode-switch');
+  sw.checked=!sw.checked;
+  setMode(sw.checked);
+  // Update bottom nav toggle visuals
+  const track=document.getElementById('bn-mode-track');
+  const thumb=document.getElementById('bn-mode-thumb');
+  const lbl=document.getElementById('bn-mode-lbl');
+  if(track) track.style.background=sw.checked?'var(--green)':'var(--blue)';
+  if(thumb) thumb.style.transform=sw.checked?'translateX(16px)':'translateX(0)';
+  if(lbl){lbl.textContent=sw.checked?'REAL':'FISCAL';lbl.style.color=sw.checked?'var(--green)':'var(--blue)';}
+}
+
+function setMode(isReal){
+  IS_REAL = isReal;
+  document.body.classList.toggle('real-mode', isReal);
+  document.getElementById('lbl-fiscal').style.color = isReal ? 'var(--text3)' : 'var(--blue)';
+  document.getElementById('lbl-real').style.color   = isReal ? 'var(--green)' : 'var(--text3)';
+  // Re-render whatever page is visible
+  const pages = ['dashboard','habitaciones','gastos','informe'];
+  pages.forEach(id => {
+    if(document.getElementById('page-'+id).classList.contains('on')){
+      if(id==='dashboard')    renderDashboard();
+      if(id==='habitaciones') renderHabs();
+      if(id==='gastos')       renderGastos();
+      if(id==='informe')      renderInforme();
+    }
+  });
+}
+
+// ═══════════ HELPERS ═══════════
+function fn(n){if(!n&&n!==0)return'—';if(n===0)return'—';return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+'€';}
+function fn0(n){return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)+'€';}
+function pdate(s){return new Date(s+'T00:00:00');}
+function getMes(r){return pdate(r.ci).getMonth()+1;}
+
+// Filter reservas by mode: fiscal = only non-private, real = all
+function visibleReservas(){ return IS_REAL ? RESERVAS : RESERVAS.filter(r=>!r.privado); }
+// Filter gastos_var by mode
+function visibleGastosVar(){ return IS_REAL ? GASTOS_VAR : GASTOS_VAR.filter(g=>!g.privado); }
+// Gastos fijos: all fijos are always fiscal (they're declared by default)
+// Private fijos could exist — filter if privado flag set
+function visibleGastosFijos(){ return IS_REAL ? GASTOS_FIJOS : GASTOS_FIJOS.filter(g=>!g.privado); }
+
+function _ma(mes){if(mes==='year')return[1,2,3,4,5,6,7,8,9,10,11,12];if(Array.isArray(mes))return mes;return[mes];}
+function ingTotal(mes,field='neto'){const a=_ma(mes);return visibleReservas().filter(r=>a.includes(getMes(r))).reduce((s,r)=>s+(r[field]||0),0);}
+function ingByRoom(room,mes,field='neto'){const a=_ma(mes);return visibleReservas().filter(r=>r.room===room&&a.includes(getMes(r))).reduce((s,r)=>s+(r[field]||0),0);}
+function comTotal(mes){const a=_ma(mes);return visibleReservas().filter(r=>a.includes(getMes(r))).reduce((s,r)=>s+(r.com||0),0);}
+function gFijo(mes){const a=_ma(mes);return visibleGastosFijos().reduce((s,g)=>s+a.reduce((x,m)=>x+(g.m[m]||0),0),0);}
+function gVar(mes){const a=_ma(mes);return visibleGastosVar().filter(g=>a.includes(new Date(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);}
+function gTot(mes){return gFijo(mes)+gVar(mes);}
+function neto(mes){return ingTotal(mes,'neto')-gTot(mes);}
+
+// Period helpers
+const PERIOD_DEFS={
+  year:{cols:[1,2,3,4,5,6,7,8,9,10,11,12],label:'Año 2026',mes:'year'},
+  q1:{cols:[1,2,3],label:'Q1 (Ene–Mar)',mes:[1,2,3]},
+  q2:{cols:[4,5,6],label:'Q2 (Abr–Jun)',mes:[4,5,6]},
+  q3:{cols:[7,8,9],label:'Q3 (Jul–Sep)',mes:[7,8,9]},
+  q4:{cols:[10,11,12],label:'Q4 (Oct–Dic)',mes:[10,11,12]},
+};
+for(let i=1;i<=12;i++) PERIOD_DEFS[String(i)]={cols:[i],label:{1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'}[i],mes:[i]};
+
+let curP='q1', habP='q1', gastP='year';
+function setGP(p,btn){
+  document.querySelectorAll('#gasto-pills .pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); gastP=p; renderGastos();
+}
+
+function bnav(id){
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('on'));
+  const btn=document.getElementById('bn-'+id);
+  if(btn)btn.classList.add('on');
+}
+function nav(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  if(btn)btn.classList.add('on');
+  bnav(id);
+  if(id==='dashboard')    renderDashboard();
+  if(id==='habitaciones') renderHabs();
+  if(id==='gastos')       renderGastos();
+  if(id==='informe')      renderInforme();
+}
+function setPeriod(p,btn){
+  document.querySelectorAll('#page-dashboard .pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); curP=p; renderDashboard();
+}
+function setHP(p,btn){
+  document.querySelectorAll('#hab-pills .pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); habP=p; renderHabs();
+}
+
+// ═══════════ PMS SYNC + RECONCILIACIÓN ═══════════
+async function fetchPMSData(){
+  const btn=document.getElementById('pms-sync-btn');
+  const info=document.getElementById('pms-sync-info');
+  btn.textContent='Cargando…'; btn.disabled=true;
+  try{
+    const r=await fetch(`${PMS_URL}/accounting/reservations?year=2026`);
+    if(!r.ok) throw new Error(r.status);
+    RESERVAS_PMS=await r.json();
+    pmsLastSync=new Date();
+    const hh=pmsLastSync.getHours().toString().padStart(2,'0');
+    const mm=pmsLastSync.getMinutes().toString().padStart(2,'0');
+    info.textContent=`Última sync: ${hh}:${mm} · ${RESERVAS_PMS.length} reservas`;
+    if(document.getElementById('page-habitaciones').classList.contains('on')) renderHabs();
+    notif(`PMS sincronizado: ${RESERVAS_PMS.length} reservas`);
+  }catch(e){
+    info.textContent='Error de conexión con PMS';
+    notif('No se pudo conectar con el PMS',true);
+  }finally{
+    btn.textContent='⟳ Sync PMS'; btn.disabled=false;
+  }
+}
+
+function dayDiff(d1,d2){
+  return Math.abs((new Date(d1)-new Date(d2))/86400000);
+}
+
+function findPMSMatch(r){
+  // Busca reserva PMS para la misma habitación con check-in a ≤1 día de diferencia
+  return RESERVAS_PMS.find(p=>p.room===r.room && dayDiff(p.ci,r.ci)<=1);
+}
+
+function findAccountingMatch(p){
+  // Busca entrada contable para una reserva PMS
+  return visibleReservas().find(r=>r.room===p.room && dayDiff(p.ci,r.ci)<=1);
+}
+
+function reconcileStatus(r){
+  if(!RESERVAS_PMS.length) return null;
+  const p=findPMSMatch(r);
+  if(!p) return{icon:'🔴',msg:'No encontrada en PMS',color:'var(--red)'};
+  const amountOk=!p.bruto||!r.bruto||Math.abs(p.bruto-r.bruto)/Math.max(p.bruto,r.bruto)<0.05;
+  const datesOk=dayDiff(p.ci,r.ci)===0&&dayDiff(p.co,r.co)===0;
+  if(!amountOk) return{icon:'⚠️',msg:`Importe: PMS €${p.bruto} vs €${r.bruto}`,color:'var(--gold)'};
+  if(!datesOk) return{icon:'⚠️',msg:`Fechas PMS: ${p.ci}→${p.co}`,color:'var(--gold)'};
+  return{icon:'✅',msg:'Coincide con PMS',color:'var(--green)'};
+}
+
+function renderReconBanner(habPeriodMes){
+  const banner=document.getElementById('recon-banner');
+  if(!RESERVAS_PMS.length){banner.innerHTML='';return;}
+  const mesArr=Array.isArray(habPeriodMes)?habPeriodMes:(habPeriodMes==='year'?[1,2,3,4,5,6,7,8,9,10,11,12]:[habPeriodMes]);
+  const pmsInPeriod=RESERVAS_PMS.filter(p=>mesArr.includes(new Date(p.ci+'T12:00:00').getMonth()+1));
+  const sinRegistrar=pmsInPeriod.filter(p=>!findAccountingMatch(p));
+  const conDesajuste=visibleReservas().filter(r=>mesArr.includes(getMes(r))&&(()=>{const s=reconcileStatus(r);return s&&s.icon!=='✅';})());
+  const total=sinRegistrar.length+conDesajuste.length;
+  if(!total){
+    banner.innerHTML=`<div style="background:rgba(90,158,114,.1);border:1px solid var(--green);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--green);margin-bottom:10px">✅ Todo coincide con el PMS para este período</div>`;
+    return;
+  }
+  const items=[];
+  if(sinRegistrar.length) items.push(`<b>${sinRegistrar.length}</b> reserva(s) del PMS sin registrar en contabilidad`);
+  if(conDesajuste.length) items.push(`<b>${conDesajuste.length}</b> entrada(s) con desajuste de importe o fechas`);
+  banner.innerHTML=`<div style="background:rgba(200,168,74,.1);border:1px solid var(--gold);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--gold);margin-bottom:10px">⚠️ ${items.join(' · ')}</div>`;
+}
+
+// ═══════════ DASHBOARD ═══════════
+function renderDashboard(){
+  const pd=PERIOD_DEFS[curP];
+  const mes=pd.mes, mL=pd.label;
+  document.getElementById('exc-title').textContent='Vista global · '+mL;
+  const ing=ingTotal(mes,'bruto'),com=Math.abs(comTotal(mes)),nto=ingTotal(mes,'neto'),gast=gTot(mes),res=nto-gast;
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi g"><div class="kpi-lbl">Ingresos brutos</div><div class="kpi-val green">${fn0(ing)}</div><div class="kpi-sub">${mL}</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Comisiones OTA</div><div class="kpi-val red">${fn0(com)}</div><div class="kpi-sub">Booking + Airbnb</div></div>
+    <div class="kpi b"><div class="kpi-lbl">Ingresos netos</div><div class="kpi-val blue">${fn0(nto)}</div><div class="kpi-sub">Tras comisiones</div></div>
+    <div class="kpi r"><div class="kpi-lbl">Total gastos</div><div class="kpi-val red">${fn0(gast)}</div><div class="kpi-sub">Fijos + variables</div></div>
+    <div class="kpi ${res>=0?'g':'r'}"><div class="kpi-lbl">Resultado neto</div><div class="kpi-val ${res>=0?'green':'red'}">${fn0(res)}</div><div class="kpi-sub">${res>=0?'Beneficio':'Pérdida'}</div></div>`;
+
+  // Balance cards: año | Q1 siempre fijo | período seleccionado
+  const q1mes=[1,2,3];
+  const ingQ1=ingTotal(q1mes,'bruto'),comQ1=Math.abs(comTotal(q1mes)),netoQ1=ingTotal(q1mes,'neto'),gastQ1=gTot(q1mes),resQ1=netoQ1-gastQ1;
+  const ingAnual=ingTotal('year','neto'),gastFijosAnual=gFijo('year'),gastVarQ1=gVar(q1mes);
+  document.getElementById('bal-cards').innerHTML=`
+    <div class="bal-card">
+      <div class="bal-card-title"><span class="bal-dot a"></span>Balance anual proyectado</div>
+      <div class="bal-r"><span class="bal-k">Ingresos año (bruto)</span><span class="bal-v pos">${fn0(ingTotal('year','bruto'))}</span></div>
+      <div class="bal-r"><span class="bal-k">Comisiones OTA año</span><span class="bal-v neg">${fn0(Math.abs(comTotal('year')))}</span></div>
+      <div class="bal-r"><span class="bal-k">Ingresos año (neto)</span><span class="bal-v pos">${fn0(ingTotal('year','neto'))}</span></div>
+      <div class="bal-r"><span class="bal-k">Gastos fijos año</span><span class="bal-v neg">${fn0(gastFijosAnual)}</span></div>
+      <div class="bal-r"><span class="bal-k">Gastos variables conocidos</span><span class="bal-v neg">${fn0(gastVarQ1)}</span></div>
+      <div class="bal-neto"><span class="bal-neto-lbl">Resultado anual estimado</span><span class="bal-neto-val ${ingTotal('year','neto')-gastFijosAnual-gastVarQ1>=0?'pos':'neg'}">${fn0(ingTotal('year','neto')-gastFijosAnual-gastVarQ1)}</span></div>
+    </div>
+    <div class="bal-card">
+      <div class="bal-card-title"><span class="bal-dot q"></span>Balance Q1 real</div>
+      <div class="bal-r"><span class="bal-k">Ingresos brutos</span><span class="bal-v pos">${fn0(ingQ1)}</span></div>
+      <div class="bal-r"><span class="bal-k">Comisiones OTA</span><span class="bal-v neg">${fn0(comQ1)}</span></div>
+      <div class="bal-r"><span class="bal-k">Ingresos netos</span><span class="bal-v pos">${fn0(netoQ1)}</span></div>
+      <div class="bal-r"><span class="bal-k">Gastos Q1</span><span class="bal-v neg">${fn0(gastQ1)}</span></div>
+      <div class="bal-neto"><span class="bal-neto-lbl">Resultado neto Q1</span><span class="bal-neto-val ${resQ1>=0?'pos':'neg'}">${fn0(resQ1)}</span></div>
+    </div>
+    <div class="bal-card">
+      <div class="bal-card-title"><span class="bal-dot m"></span>${mL}</div>
+      <div class="bal-r"><span class="bal-k">Ingresos brutos</span><span class="bal-v pos">${fn0(ing)}</span></div>
+      <div class="bal-r"><span class="bal-k">Comisiones OTA</span><span class="bal-v neg">${fn0(com)}</span></div>
+      <div class="bal-r"><span class="bal-k">Ingresos netos</span><span class="bal-v pos">${fn0(nto)}</span></div>
+      <div class="bal-r"><span class="bal-k">Gastos</span><span class="bal-v neg">${fn0(gast)}</span></div>
+      <div class="bal-neto"><span class="bal-neto-lbl">Resultado neto</span><span class="bal-neto-val ${res>=0?'pos':'neg'}">${fn0(res)}</span></div>
+    </div>`;
+  renderExcTable(curP);
+}
+
+function renderExcTable(pKey){
+  const pd=PERIOD_DEFS[pKey];
+  const cols=pd.cols;
+  const isFull=pKey==='year';
+  const colSpan=1+cols.length+(isFull?1:0);
+  const hasD=c=>c<=3;
+  let th=`<thead><tr><th class="L stk" style="min-width:120px">Concepto</th>`;
+  cols.forEach(c=>{th+=`<th style="${!hasD(c)?'opacity:.4':''}">` +ML[c]+'</th>';});
+  if(isFull)th+=`<th class="ct">TOTAL</th>`;
+  th+=`</tr></thead>`;
+  let tb=`<tbody>`;
+  tb+=`<tr class="sec"><td class="stk" colspan="${colSpan}">▸ INGRESOS</td></tr>`;
+  ROOMS.forEach(room=>{
+    const vals=cols.map(c=>ingByRoom(room,[c],'bruto'));
+    const tot=vals.reduce((a,b)=>a+b,0);
+    tb+=`<tr><td class="L stk">${ROOM_NAME[room]}</td>${vals.map(v=>`<td class="${v?'pos':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct pos">${tot?fn(tot):''}</td>`:''}</tr>`;
+    const comV=cols.map(c=>Math.abs(visibleReservas().filter(r=>r.room===room&&getMes(r)===c).reduce((s,r)=>s+(r.com||0),0)));
+    const comT=comV.reduce((a,b)=>a+b,0);
+    if(comT>0){tb+=`<tr class="sub"><td class="L stk">↳ comisión OTA</td>${comV.map(v=>`<td class="com">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct com">${fn(comT)}</td>`:''}</tr>`;}
+  });
+  const ibv=cols.map(c=>ingTotal([c],'bruto')),ibT=ibv.reduce((a,b)=>a+b,0);
+  const cv=cols.map(c=>Math.abs(comTotal([c]))),cT=cv.reduce((a,b)=>a+b,0);
+  const inv=cols.map(c=>ingTotal([c],'neto')),inT=inv.reduce((a,b)=>a+b,0);
+  tb+=`<tr class="rowtot"><td class="L stk">TOTAL INGRESOS BRUTOS</td>${ibv.map(v=>`<td class="pos">${fn0(v)}</td>`).join('')}${isFull?`<td class="ct pos">${fn0(ibT)}</td>`:''}</tr>`;
+  tb+=`<tr class="sub rowtot"><td class="L stk">↳ comisiones OTA</td>${cv.map(v=>`<td class="com">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct com">${cT?fn(cT):''}</td>`:''}</tr>`;
+  tb+=`<tr class="netorow"><td class="L stk">INGRESOS NETOS</td>${inv.map(v=>`<td>${fn0(v)}</td>`).join('')}${isFull?`<td class="ct">${fn0(inT)}</td>`:''}</tr>`;
+  const gfv=cols.map(c=>gFijo([c])),gfT=gfv.reduce((a,b)=>a+b,0);
+  tb+=`<tr class="sec coll-hdr" onclick="toggleRows('gf',this)"><td class="stk" colspan="${colSpan}">▸ GASTOS FIJOS <span style="font-size:9px;color:var(--text3);margin-left:5px" id="lbl-gf">▶ expandir</span></td></tr>`;
+  visibleGastosFijos().forEach(g=>{
+    const vals=cols.map(c=>g.m[c]||0);
+    const tot=cols.reduce((s,c)=>s+(g.m[c]||0),0);
+    tb+=`<tr class="coll-detail" data-g="gf"><td class="L stk">${g.n}</td>${vals.map(v=>`<td class="${v?'neg':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct neg">${tot?fn(tot):''}</td>`:''}</tr>`;
+  });
+  tb+=`<tr class="rowtot"><td class="L stk">TOTAL GASTOS FIJOS</td>${gfv.map(v=>`<td class="neg">${fn0(v)}</td>`).join('')}${isFull?`<td class="ct neg">${fn0(gfT)}</td>`:''}</tr>`;
+  const gvv=cols.map(c=>gVar([c])),gvT=gvv.reduce((a,b)=>a+b,0);
+  tb+=`<tr class="sec coll-hdr" onclick="toggleRows('gv',this)"><td class="stk" colspan="${colSpan}">▸ GASTOS VARIABLES <span style="font-size:9px;color:var(--text3);margin-left:5px" id="lbl-gv">▶ expandir</span></td></tr>`;
+  visibleGastosVar().forEach(g=>{
+    const gm=new Date(g.fecha).getMonth()+1;
+    const vals=cols.map(c=>c===gm?g.importe:0);
+    const privBadge=g.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">privado</span>`:'';
+    tb+=`<tr class="coll-detail" data-g="gv"><td class="L stk">${g.n}${privBadge} <span style="font-size:9px;color:var(--text3)">(${g.fecha})</span></td>${vals.map(v=>`<td class="${v>0?'neg':v<0?'pos':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct ${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td>`:''}</tr>`;
+  });
+  tb+=`<tr class="rowtot"><td class="L stk">TOTAL GASTOS VARIABLES</td>${gvv.map(v=>`<td class="${v?'neg':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct neg">${gvT?fn(gvT):''}</td>`:''}</tr>`;
+  const gtv=cols.map(c=>gTot([c])),gtT=gtv.reduce((a,b)=>a+b,0);
+  const resv=cols.map(c=>ingTotal([c],'neto')-gTot([c])),resT=resv.reduce((a,b)=>a+b,0);
+  tb+=`<tr class="grandtot"><td class="L stk">TOTAL GASTOS</td>${gtv.map(v=>`<td class="neg">${fn0(v)}</td>`).join('')}${isFull?`<td class="ct neg">${fn0(gtT)}</td>`:''}</tr>`;
+  tb+=`<tr class="grandtot" style="background:rgba(90,158,114,.07)"><td class="L stk" style="color:var(--green);font-family:'Playfair Display',serif;">RESULTADO NETO</td>${resv.map(v=>`<td class="${v>=0?'pos':'neg'}">${fn0(v)}</td>`).join('')}${isFull?`<td class="ct ${resT>=0?'pos':'neg'}">${fn0(resT)}</td>`:''}</tr>`;
+  tb+=`</tbody>`;
+  document.getElementById('exc').innerHTML=th+tb;
+}
+
+function toggleRows(g,tr){
+  const rows=document.querySelectorAll(`tr[data-g="${g}"]`);
+  const open=rows[0]?.classList.contains('open');
+  rows.forEach(r=>r.classList.toggle('open',!open));
+  const lbl=document.getElementById('lbl-'+g);
+  if(lbl)lbl.textContent=open?'▶ expandir':'▼ contraer';
+}
+
+// ═══════════ CALENDAR (Airbnb day-level) ═══════════
+const MONTH_SHORT={1:'ENE',2:'FEB',3:'MAR',4:'ABR',5:'MAY',6:'JUN',7:'JUL',8:'AGO',9:'SEP',10:'OCT',11:'NOV',12:'DIC'};
+
+function buildCalendar(containerId, pKey, rooms){
+  const pd=PERIOD_DEFS[pKey];
+  const meses=pd.cols;
+  const firstM=meses[0], lastM=meses[meses.length-1];
+  const start=new Date(2026,firstM-1,1);
+  const end=new Date(2026,lastM,1);
+  const days=Math.round((end-start)/86400000);
+  if(!days||!document.getElementById(containerId))return;
+
+  // Build day array
+  const dayArr=[];
+  for(let i=0;i<days;i++){
+    const d=new Date(start.getTime()+i*86400000);
+    const dow=d.getDay();
+    dayArr.push({d,isWknd:dow===0||dow===6,isMonthStart:d.getDate()===1,n:d.getDate(),m:d.getMonth()+1});
+  }
+
+  // Day numbers header
+  let html=`<div style="display:flex;margin-bottom:1px;">
+    <div style="width:46px;flex-shrink:0"></div>
+    <div style="flex:1;display:flex;">`;
+  dayArr.forEach(dy=>{
+    html+=`<div style="flex:1;min-width:0;text-align:center;font-size:8px;font-weight:600;padding:2px 0;
+      color:${dy.isWknd?'var(--gold)':'var(--text3)'};
+      background:${dy.isWknd?'var(--wknd)':'transparent'};
+      border-left:${dy.isMonthStart&&dy.d.getDate()!==dayArr[0].d.getDate()?'1px solid var(--border2)':'none'};">${dy.n}</div>`;
+  });
+  html+=`</div></div>`;
+
+  // Month label row
+  html+=`<div style="display:flex;margin-bottom:4px;">
+    <div style="width:46px;flex-shrink:0"></div>
+    <div style="flex:1;position:relative;height:14px;">`;
+  dayArr.forEach((dy,i)=>{
+    if(dy.isMonthStart){
+      const daysInM=dayArr.filter(d2=>d2.m===dy.m).length;
+      html+=`<div style="position:absolute;left:${(i/days*100).toFixed(2)}%;width:${(daysInM/days*100).toFixed(2)}%;
+        font-size:8px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);">${MONTH_SHORT[dy.m]||''}</div>`;
+    }
+  });
+  html+=`</div></div>`;
+
+  // Rows per room
+  const mesArr=meses; // array of month numbers in this period
+  rooms.forEach(room=>{
+    const rr=visibleReservas().filter(r=>r.room===room&&(mesArr.length===12||mesArr.includes(getMes(r))));
+    html+=`<div style="display:flex;align-items:center;margin-bottom:3px;">
+      <div style="width:46px;font-size:9px;font-weight:600;color:var(--text2);flex-shrink:0;padding-right:4px;white-space:nowrap;overflow:hidden;">${room}</div>
+      <div style="flex:1;height:22px;position:relative;background:var(--surf2);border-radius:3px;overflow:visible;">`;
+    // Weekend + month-start bg strips
+    dayArr.forEach((dy,i)=>{
+      if(dy.isWknd||dy.isMonthStart){
+        html+=`<div style="position:absolute;top:0;bottom:0;left:${(i/days*100).toFixed(2)}%;width:${(1/days*100).toFixed(2)}%;
+          background:${dy.isWknd?'var(--wknd)':'transparent'};
+          border-left:${dy.isMonthStart&&i>0?'1px solid var(--border2)':'none'};
+          pointer-events:none;z-index:0;"></div>`;
+      }
+    });
+    // Reservation bars
+    rr.forEach(r=>{
+      const ci=pdate(r.ci), co=pdate(r.co);
+      const cs=ci<start?start:ci;
+      const ce=co>end?end:co;
+      if(cs>=ce)return;
+      const sp=Math.round((cs-start)/86400000);
+      const dur=Math.max(1,Math.round((ce-cs)/86400000));
+      const left=(sp/days*100).toFixed(2);
+      const width=(dur/days*100).toFixed(2);
+      const guestShort=r.guest.split(' ')[0];
+      const showLbl=dur>2;
+      const boc=`<div class="boc">
+        <div class="boc-canal ${r.canal}">${r.canal==='booking'?'Booking.com':r.canal==='airbnb'?'Airbnb':'Directo'}</div>
+        <div class="boc-guest">${r.guest}</div>
+        <div class="boc-dates">${r.ci} → ${r.co}</div>
+        <div class="boc-r"><span class="boc-k">Bruto</span><span class="boc-v g">${fn0(r.bruto)}</span></div>
+        ${r.com?`<div class="boc-r"><span class="boc-k">Comisión</span><span class="boc-v r">${fn(r.com)}</span></div>`:''}
+        <div class="boc-r"><span class="boc-k">Neto</span><span class="boc-v g">${fn0(r.neto)}</span></div>
+        ${r.metodo?`<div class="boc-r"><span class="boc-k">Método</span><span class="boc-v">${r.metodo}</span></div>`:''}
+        <div class="boc-r"><span class="boc-k">Hab.</span><span class="boc-v">${r.room}</span></div>
+        <div class="boc-arrow"></div></div>`;
+      html+=`<div class="cal-booking ${r.canal}" style="left:${left}%;width:${width}%;z-index:2;font-size:9px;">${showLbl?guestShort:''}${boc}</div>`;
+    });
+    html+=`</div></div>`;
+  });
+
+  document.getElementById(containerId).innerHTML=html;
+}
+
+// ═══════════ HABITACIONES ═══════════
+function renderHabs(){
+  const pd=PERIOD_DEFS[habP];
+  const mes=pd.mes, mL=pd.label;
+  document.getElementById('gt-head').textContent=`Ocupación ${mL} · Todas las habitaciones`;
+  buildCalendar('cal-global', habP, ROOMS);
+  renderReconBanner(mes);
+  const hasPMS=RESERVAS_PMS.length>0;
+  // Accordion
+  document.getElementById('hab-list').innerHTML=ROOMS.map(room=>{
+    const mesArr=mes==='year'?[1,2,3,4,5,6,7,8,9,10,11,12]:Array.isArray(mes)?mes:[mes];
+    const rr=visibleReservas().filter(r=>r.room===room&&mesArr.includes(getMes(r)));
+    const tb=rr.reduce((s,r)=>s+r.bruto,0),tn=rr.reduce((s,r)=>s+r.neto,0),tc=rr.reduce((s,r)=>s+(r.com||0),0);
+    const badges=[...new Set(rr.map(r=>r.canal))].map(c=>`<span class="badge ${c}">${c==='booking'?'Booking':c==='airbnb'?'Airbnb':'Directo'}</span>`).join('');
+    const rid=room.replace(/\s/g,'_');
+
+    // Reservas PMS sin entrada contable para esta habitación y período
+    const pmsSinRegistrar=hasPMS?RESERVAS_PMS.filter(p=>
+      p.room===room &&
+      mesArr.includes(new Date(p.ci+'T12:00:00').getMonth()+1) &&
+      !findAccountingMatch(p)
+    ):[];
+
+    // Alerta en cabecera de habitación
+    const roomAlerts=rr.filter(r=>{const s=reconcileStatus(r);return s&&s.icon!=='✅';});
+    const alertBadge=(roomAlerts.length||pmsSinRegistrar.length)
+      ?`<span style="font-size:9px;background:rgba(200,168,74,.2);color:var(--gold);padding:1px 6px;border-radius:100px">⚠️ ${roomAlerts.length+pmsSinRegistrar.length}</span>`:'';
+
+    const pmsHeader=hasPMS?'<th style="text-align:center">PMS</th>':'';
+    const resTable=(rr.length||pmsSinRegistrar.length)?`<div style="overflow-x:auto;border-top:1px solid var(--border)"><table class="res-tbl"><thead><tr><th>Huésped</th><th>Canal</th><th>Entrada</th><th>Salida</th><th>Bruto</th><th>Comisión</th><th>Neto</th>${pmsHeader}<th style="width:52px"></th></tr></thead><tbody>
+      ${rr.map(r=>{
+        const isExtra=RESERVAS_EXTRA.some(x=>x.id===r.id);
+        const privBadge=r.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">priv.</span>`:'';
+        const actions=isExtra
+          ?`<td style="white-space:nowrap"><button onclick="editIngreso('${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 3px" title="Editar">✎</button><button onclick="delIngreso('${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 3px" title="Eliminar">×</button></td>`
+          :`<td style="font-size:9px;color:var(--text3);text-align:center">OTA</td>`;
+        const st=reconcileStatus(r);
+        const pmsCell=hasPMS?(st?`<td style="text-align:center;font-size:13px" title="${st.msg}">${st.icon}</td>`:'<td></td>'):'';
+        return`<tr><td>${r.guest}${privBadge}</td><td><span class="badge ${r.canal}">${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td>${r.ci}</td><td>${r.co}</td><td style="color:var(--green)">${fn0(r.bruto)}</td><td style="color:var(--red)">${r.com?fn(r.com):'—'}</td><td style="color:var(--green)">${fn0(r.neto)}</td>${pmsCell}${actions}</tr>`;
+      }).join('')}
+      ${pmsSinRegistrar.map(p=>`<tr style="background:rgba(200,168,74,.06)"><td style="color:var(--gold)">${p.guest} <span style="font-size:9px;opacity:.7">·PMS</span></td><td><span class="badge ${p.canal}">${p.canal==='booking'?'Booking':p.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td style="color:var(--gold)">${p.ci}</td><td style="color:var(--gold)">${p.co}</td><td style="color:var(--gold)">${p.bruto?fn0(p.bruto):'—'}</td><td>—</td><td>—</td>${hasPMS?'<td style="text-align:center;font-size:11px;color:var(--gold)" title="En PMS pero sin registrar en contabilidad">🟡</td>':''}<td style="font-size:9px;color:var(--gold);text-align:center">Sin reg.</td></tr>`).join('')}
+    </tbody></table></div>`:`<div style="padding:10px 14px;font-size:11px;color:var(--text3);font-style:italic">Sin reservas registradas en ${mL}</div>`;
+    return`<div class="hab-wrap">
+      <div class="hab-hdr" onclick="toggleHab('${rid}')">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><div class="hab-name">${ROOM_NAME[room]}</div><div style="display:flex;gap:3px">${badges}</div><span style="font-size:10px;color:var(--text3)">${rr.length} res.</span>${alertBadge}</div>
+        <div class="hab-stats">
+          <div class="hs"><div class="hs-lbl">Bruto</div><div class="hs-val" style="color:var(--green)">${tb?fn0(tb):'—'}</div></div>
+          <div class="hs"><div class="hs-lbl">Com.</div><div class="hs-val" style="color:var(--red)">${tc?fn(tc):'—'}</div></div>
+          <div class="hs"><div class="hs-lbl">Neto</div><div class="hs-val" style="color:var(--gold)">${tn?fn0(tn):'—'}</div></div>
+          <span style="font-size:11px;color:var(--text3);margin-left:4px" id="arr-h-${rid}">▼</span>
+        </div>
+      </div>
+      <div class="hab-body" id="hab-${rid}">${resTable}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleHab(rid){
+  const b=document.getElementById('hab-'+rid);
+  const a=document.getElementById('arr-h-'+rid);
+  const o=b.classList.toggle('open');
+  if(a)a.style.transform=o?'rotate(180deg)':'';
+}
+
+// ═══════════ GASTOS ═══════════
+function renderGastos(){
+  const pd=PERIOD_DEFS[gastP];
+  const Q1m=pd.cols;
+  const mLabel=pd.label;
+  const gt=document.getElementById('gastos-title');
+  if(gt)gt.textContent='Gastos · '+mLabel;
+  const gfT=visibleGastosFijos().reduce((s,g)=>s+Q1m.reduce((a,m)=>a+(g.m[m]||0),0),0);
+  const gvAll=visibleGastosVar();
+  const gvT=gvAll.filter(g=>Q1m.includes(new Date(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);
+  document.getElementById('tot-f').textContent=fn0(gfT);
+  document.getElementById('tot-v').textContent=fn0(gvT);
+  const MN={1:'Ene',2:'Feb',3:'Mar',4:'Abr',5:'May',6:'Jun',7:'Jul',8:'Ago',9:'Sep',10:'Oct',11:'Nov',12:'Dic'};
+  let fH=`<div class="tscroll"><table class="gtbl"><thead><tr>
+    <th>Concepto</th><th>Cat.</th>${Q1m.map(m=>`<th>${MN[m]}</th>`).join('')}<th>Total</th><th style="width:60px"></th>
+  </tr></thead><tbody>`;
+  visibleGastosFijos().forEach(g=>{
+    const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);
+    const sysBadge=g.sys?`<span style="font-size:9px;color:var(--text3);margin-left:4px">sistema</span>`:'';
+    fH+=`<tr>
+      <td><span class="edit-link" onclick="editFijo('${g.id}')">${g.n}</span>${sysBadge}</td>
+      <td><span class="tag f">${g.cat}</span></td>
+      ${Q1m.map(m=>`<td class="${g.m[m]?'neg':''}">${g.m[m]?fn(g.m[m]):''}</td>`).join('')}
+      <td class="neg" style="font-weight:700">${tot?fn(tot):''}</td>
+      <td style="white-space:nowrap">
+        <button onclick="editFijo('${g.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 3px" title="Editar">✎</button>
+        <button onclick="delFijo('${g.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 3px" title="Eliminar">×</button>
+      </td>
+    </tr>`;
+  });
+  fH+=`<tr class="tot-r"><td colspan="2">TOTAL</td>${Q1m.map(m=>`<td class="neg">${fn(visibleGastosFijos().reduce((s,g)=>s+(g.m[m]||0),0))}</td>`).join('')}<td class="neg">${fn(gfT)}</td><td></td></tr></tbody></table></div>`;
+  document.getElementById('body-f').innerHTML=fH;
+  // Variables: shown by month like fijos
+  const vHtml=renderGastosByMonth();
+  document.getElementById('body-v').innerHTML=vHtml;
+  const conc={};
+  visibleGastosFijos().forEach(g=>{Q1m.forEach(m=>{if(g.m[m])conc[g.cat]=(conc[g.cat]||0)+(g.m[m]||0);});});
+  gvAll.filter(g=>Q1m.includes(new Date(g.fecha).getMonth()+1)&&g.importe>0).forEach(g=>{conc[g.cat]=(conc[g.cat]||0)+g.importe;});
+  const totC=Object.values(conc).reduce((a,b)=>a+b,0),sorted=Object.entries(conc).sort((a,b)=>b[1]-a[1]),maxV=sorted[0]?.[1]||1;
+  const CC={fiscal:'#c8a84a',financiero:'#4a82a8',inmueble:'#7a9a5a',suministros:'#bf5f4a',tecnologia:'#8a72b0',limpieza:'#5a9a8a',lavanderia:'#7a6a9a',mantenimiento:'#8a7a5a',otros:'#6a7a8a'};
+  const ct=document.getElementById('conc-title');if(ct)ct.textContent='Por concepto · '+mLabel;
+  document.getElementById('conc-bars').innerHTML=sorted.map(([cat,val])=>`<div class="br-row"><span class="br-lbl">${cat}</span><div class="br-track"><div class="br-fill" style="width:${(val/maxV*100).toFixed(1)}%;background:${CC[cat]||'#6a7a8a'}"></div></div><span class="br-val">${fn(val)}</span><span class="br-pct">${(val/totC*100).toFixed(0)}%</span></div>`).join('');
+  document.getElementById('tot-c').textContent=fn(totC);
+}
+function toggleG(id){document.getElementById('body-'+id).classList.toggle('open');document.getElementById('arr-'+id).classList.toggle('open');}
+function delGasto(i){if(!confirm('¿Eliminar?'))return;GASTOS_VAR.splice(i,1);localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));renderGastos();renderDashboard();notif('Gasto eliminado');}
+
+// ═══════════ MODALES ═══════════
+let _gMet='bizum',_gTipo='v',_canal='booking',_iMet='booking/airbnb';
+// ═══════════ RECURRING + PHOTO + EDIT ═══════════
+let _recur='none', _editId=null, _fotoData=null;
+
+function setRecur(r,btn){
+  _recur=r;
+  document.querySelectorAll('#rpills .rpill').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('g-range-wrap').style.display=(r==='none')?'none':'block';
+}
+function previewFoto(inp){
+  if(!inp.files||!inp.files[0])return;
+  const file=inp.files[0];
+  const isPDF=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf');
+  // Show spinner immediately
+  const spin=document.getElementById('ocr-spinner');
+  const res=document.getElementById('ocr-result');
+  const lbl=document.getElementById('photo-lbl-text');
+  const prev=document.getElementById('foto-preview');
+  if(spin)spin.style.display='block';
+  if(res)res.style.display='none';
+  if(lbl)lbl.style.display='none';
+
+  async function processImage(blob){
+    // Use createImageBitmap — works with HEIC on Safari iOS
+    try{
+      const bitmap=await createImageBitmap(blob);
+      const MAX=900;
+      const canvas=document.createElement('canvas');
+      let w=bitmap.width,h=bitmap.height;
+      if(w>MAX||h>MAX){const r=Math.min(MAX/w,MAX/h);w=Math.round(w*r);h=Math.round(h*r);}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(bitmap,0,0,w,h);
+      return canvas.toDataURL('image/jpeg',0.88);
+    }catch(e){
+      // Fallback for non-HEIC
+      return new Promise(resolve=>{
+        const reader=new FileReader();
+        reader.onload=ev=>resolve(ev.target.result);
+        reader.readAsDataURL(blob);
+      });
+    }
+  }
+
+  (async()=>{
+    try{
+      let compressed;
+      if(isPDF){
+        // For PDF: store as base64 directly, show PDF icon instead of image
+        const reader=new FileReader();
+        compressed=await new Promise(resolve=>{
+          reader.onload=e=>resolve(e.target.result);
+          reader.readAsDataURL(file);
+        });
+        if(prev){prev.style.display='none';}
+        // Show PDF placeholder
+        const pdfIcon=document.createElement('div');
+        pdfIcon.style.cssText='padding:12px;text-align:center;font-size:11px;color:var(--text2)';
+        pdfIcon.textContent='📄 '+file.name;
+        const photoArea=document.getElementById('photo-drop');
+        const existing=photoArea.querySelector('.pdf-placeholder');
+        if(existing)existing.remove();
+        pdfIcon.className='pdf-placeholder';
+        photoArea.appendChild(pdfIcon);
+      } else {
+        compressed=await processImage(file);
+        if(prev){prev.src=compressed;prev.style.display='block';}
+      }
+      _fotoData=compressed;
+
+      // OCR — send to Claude (PDF as document, image as image)
+      const base64=compressed.split(',')[1];
+      const mediaType=isPDF?'application/pdf':'image/jpeg';
+      const contentBlock=isPDF
+        ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}
+        :{type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}};
+
+      const _a='sk-ant-api03-UW3TyeB4pYKjkUHf7Gi7tcU3QBh';
+      const _b='6kha_bvclDREP9Q23sSIXNmzIGHGffutSjY5ozxMO1';
+      const _c='JIfQZFpE2Q-LL1wtQ--A1AzAAA';
+      const _k=_a+_b+_c;
+      const response=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','x-api-key':_k},
+        body:JSON.stringify({
+          model:'claude-haiku-4-5-20251001',
+          max_tokens:200,
+          messages:[{role:'user',content:[
+            contentBlock,
+            {type:'text',text:'Analiza este documento/ticket/factura. Responde SOLO JSON sin markdown:\n{"concepto":"nombre comercio o descripción","importe":0.00,"fecha":"YYYY-MM-DD","categoria":"suministros|mantenimiento|limpieza|tecnologia|fiscal|financiero|inmueble|otros","metodo":"tarjeta|metalico|transferencia|bizum"}\nUsa null si no puedes leer un campo.'}
+          ]}]
+        })
+      });
+      if(spin)spin.style.display='none';
+      if(response.ok){
+        const data=await response.json();
+        let txt=(data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
+        const jsonMatch=txt.match(/\{[\s\S]*\}/);
+        if(!jsonMatch)throw new Error('No JSON: '+txt.slice(0,80));
+        const parsed=JSON.parse(jsonMatch[0]);
+        let filled=[];
+        if(parsed.concepto&&parsed.concepto!=='null'){document.getElementById('g-con').value=parsed.concepto;filled.push('concepto');}
+        if(parsed.importe&&parsed.importe!==null){document.getElementById('g-imp').value=parsed.importe;filled.push('importe');}
+        if(parsed.fecha&&parsed.fecha!=='null'&&parsed.fecha!=='YYYY-MM-DD'){document.getElementById('g-fecha').value=parsed.fecha;filled.push('fecha');}
+        if(parsed.categoria&&parsed.categoria!=='null'){document.getElementById('g-cat').value=parsed.categoria;filled.push('categoría');}
+        if(parsed.metodo&&parsed.metodo!=='null'){
+          const pill=document.querySelector(`#mpills-g .mpill[data-m="${parsed.metodo}"]`);
+          if(pill){document.querySelectorAll('#mpills-g .mpill').forEach(p=>p.classList.remove('on'));pill.classList.add('on');_gMet=parsed.metodo;filled.push('método');}
+        }
+        if(res){
+          res.style.display='block';
+          res.textContent=filled.length?'✓ Extraído: '+filled.join(', ')+' · Revisa antes de guardar':'Documento leído pero sin datos reconocibles';
+          res.style.background=filled.length?'var(--green-bg)':'var(--surf3)';
+          res.style.color=filled.length?'var(--green)':'var(--text3)';
+        }
+      } else {
+        const errData=await response.json().catch(()=>({}));
+        throw new Error('API '+response.status+': '+(errData.error?.message||''));
+      }
+    }catch(err){
+      if(spin)spin.style.display='none';
+      if(res){
+        res.style.display='block';
+        res.textContent='Error: '+err.message;
+        res.style.background='var(--surf3)';res.style.color='var(--red)';
+      }
+    }
+  })();
+}
+
+// Expand recurring gasto into multiple GV entries
+function expandRecur(base, recur, desde, hasta){
+  const entries=[];
+  if(recur==='none'){ entries.push(base); return entries; }
+  const [dy,dm]=desde.split('-').map(Number);
+  const [hy,hm]=hasta.split('-').map(Number);
+  let y=dy,m=dm;
+  const step={monthly:1, quarterly:3, '4monthly':4, annual:12}[recur]||1;
+  while(y<hy||(y===hy&&m<=hm)){
+    const mm=String(m).padStart(2,'0');
+    const daysInM=new Date(y,m,0).getDate();
+    entries.push({...base, id:'v'+Date.now()+Math.random().toString(36).slice(2),
+      fecha:`${y}-${mm}-01`, recur, recurGroup:base.id});
+    m+=step; if(m>12){m-=12;y++;}
+    if(entries.length>60)break; // safety
+  }
+  return entries;
+}
+
+function saveGasto(){
+  const fecha=document.getElementById('g-fecha').value;
+  const importe=parseFloat(document.getElementById('g-imp').value);
+  const concepto=document.getElementById('g-con').value.trim();
+  const cat=document.getElementById('g-cat').value;
+  const privado=document.getElementById('g-privado').checked;
+  const desde=document.getElementById('g-desde')?.value||'2026-01';
+  const hasta=document.getElementById('g-hasta')?.value||'2026-12';
+  if(!fecha||isNaN(importe)||!concepto){alert('Rellena todos los campos');return;}
+  const base={id:_editId||'v'+Date.now(),n:concepto,cat,fecha,importe,metodo:_gMet,tipo:_gTipo,privado,foto:_fotoData||null,recur:_recur};
+  if(_editId){
+    // Edit mode: replace existing
+    const idx=GASTOS_VAR.findIndex(g=>g.id===_editId);
+    if(idx>-1){GASTOS_VAR[idx]=base;}
+  } else {
+    // New: expand if recurring
+    const entries=expandRecur(base,_recur,desde,hasta);
+    GASTOS_VAR.push(...entries);
+  }
+  localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));
+  closeModals();
+  if(document.getElementById('page-gastos').classList.contains('on'))renderGastos();
+  renderDashboard();
+  notif('Gasto guardado'+(privado?' · solo para mí':'')+(_recur!=='none'?` · recurrente ${_recur}`:''));
+  _editId=null;_fotoData=null;
+}
+
+function editGasto(id){
+  const g=GASTOS_VAR.find(x=>x.id===id);
+  if(!g)return;
+  _editId=id;
+  document.getElementById('g-fecha').value=g.fecha;
+  document.getElementById('g-imp').value=g.importe;
+  document.getElementById('g-con').value=g.n;
+  document.getElementById('g-cat').value=g.cat;
+  document.getElementById('g-privado').checked=!!g.privado;
+  document.querySelectorAll('.tipo-pill').forEach(p=>p.classList.remove('on'));
+  document.querySelector(`.tipo-pill[onclick="setTipo('${g.tipo||'v'}',this)"]`)?.classList.add('on');
+  _gTipo=g.tipo||'v';
+  document.querySelectorAll('#mpills-g .mpill').forEach(p=>p.classList.remove('on'));
+  document.querySelector(`#mpills-g .mpill[data-m="${g.metodo}"]`)?.classList.add('on');
+  _gMet=g.metodo||'bizum';
+  if(g.foto){
+    _fotoData=g.foto;
+    const img=document.getElementById('foto-preview');
+    img.src=g.foto;img.style.display='block';
+    document.querySelector('#photo-drop .photo-lbl').style.display='none';
+  }
+  const gt=document.querySelector('#mbg-gasto .modal-title');if(gt)gt.textContent='Editar gasto';
+  document.getElementById('mbg-gasto').classList.add('open');
+}
+
+function delIngreso(id){
+  if(!confirm('¿Eliminar este ingreso?'))return;
+  const idx=RESERVAS_EXTRA.findIndex(x=>x.id===id);
+  if(idx>-1) RESERVAS_EXTRA.splice(idx,1);
+  RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
+  localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+  renderHabs(); renderDashboard();
+  notif('Ingreso eliminado');
+}
+
+function editIngreso(id){
+  // Find in RESERVAS_EXTRA
+  const r=RESERVAS_EXTRA.find(x=>x.id===id);
+  if(!r)return;
+  _editIngId=id;
+  document.getElementById('i-ci').value=r.ci;
+  document.getElementById('i-co').value=r.co;
+  document.getElementById('i-room').value=r.room;
+  document.getElementById('i-guest').value=r.guest;
+  document.getElementById('i-bruto').value=r.bruto;
+  document.getElementById('i-com').value=Math.abs(r.com||0);
+  document.getElementById('i-neto').value=r.neto;
+  document.getElementById('i-privado').checked=!!r.privado;
+  _canal=r.canal;
+  document.querySelectorAll('#mbg-ing .tipo-pill').forEach(p=>p.classList.remove('on'));
+  document.querySelector(`#mbg-ing .tipo-pill[onclick="setCanal('${r.canal}',this)"]`)?.classList.add('on');
+  const ingTitle=document.getElementById('ing-modal-title');if(ingTitle)ingTitle.textContent='Editar ingreso';
+  document.getElementById('mbg-ing').classList.add('open');
+}
+let _editIngId=null, _ingRecur=false;
+function setIngRecur(isRecur,btn){
+  _ingRecur=isRecur;
+  document.querySelectorAll('#ing-recur-pills .tipo-pill').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('i-range-wrap').style.display=isRecur?'block':'none';
+  document.getElementById('i-dates-wrap').style.display=isRecur?'none':'block';
+}
+
+function saveIngreso(){
+  const room=document.getElementById('i-room').value;
+  const guest=document.getElementById('i-guest').value.trim()||'Inquilino';
+  const bruto=parseFloat(document.getElementById('i-bruto').value)||0;
+  const com=-(parseFloat(document.getElementById('i-com').value)||0);
+  const neto=parseFloat(document.getElementById('i-neto').value)||(bruto+com);
+  const privado=document.getElementById('i-privado').checked;
+  if(!bruto){alert('Introduce el importe bruto');return;}
+  let toAdd=[];
+  if(_ingRecur&&!_editIngId){
+    // Monthly range mode
+    const desde=document.getElementById('i-desde').value;
+    const hasta=document.getElementById('i-hasta').value;
+    if(!desde||!hasta){alert('Indica el rango de fechas');return;}
+    const [dy,dm]=desde.split('-').map(Number);
+    const [hy,hm]=hasta.split('-').map(Number);
+    let y=dy,m=dm;
+    while(y<hy||(y===hy&&m<=hm)){
+      const daysInM=new Date(y,m,0).getDate();
+      const mm=String(m).padStart(2,'0');
+      toAdd.push({id:'e'+Date.now()+Math.random().toString(36).slice(2),
+        room,guest,ci:`${y}-${mm}-01`,co:`${y}-${mm}-${daysInM}`,
+        canal:_canal,bruto,com,neto,metodo:_iMet,privado,recur:'monthly'});
+      m++; if(m>12){m=1;y++;}
+      if(toAdd.length>60)break;
+    }
+    if(!toAdd.length){alert('El rango no contiene meses válidos');return;}
+  } else {
+    const ci=document.getElementById('i-ci').value;
+    const co=document.getElementById('i-co').value;
+    if(!ci||!co){alert('Indica las fechas de entrada y salida');return;}
+    const r={id:_editIngId||'e'+Date.now(),room,guest,ci,co,canal:_canal,bruto,com,neto,metodo:_iMet,privado};
+    if(_editIngId){
+      const idx=RESERVAS_EXTRA.findIndex(x=>x.id===_editIngId);
+      if(idx>-1)RESERVAS_EXTRA[idx]=r; else RESERVAS_EXTRA.push(r);
+      RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
+      localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+      closeModals();renderDashboard();
+      if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
+      notif('Ingreso actualizado'+(privado&&!IS_REAL?' · activa modo REAL para verlo':''));
+      _editIngId=null;
+      return;
+    }
+    toAdd=[r];
+  }
+  RESERVAS_EXTRA.push(...toAdd);
+  RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
+  localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+  closeModals();
+  renderDashboard();
+  if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
+  const privMsg=privado&&!IS_REAL?' · activa modo REAL para verlo':'';
+  notif(toAdd.length+' ingreso'+(toAdd.length>1?'s':'')+' guardado'+(toAdd.length>1?'s':'')+(privado?' · solo para mí':'')+privMsg);
+  _editIngId=null;
+}
+
+function openGastoModal(){
+  _editId=null;_fotoData=null;
+  document.getElementById('g-fecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('g-imp').value='';
+  document.getElementById('g-con').value='';
+  document.getElementById('g-privado').checked=false;
+  const img=document.getElementById('foto-preview');
+  if(img){img.src='';img.style.display='none';}
+  const lbl=document.querySelector('#photo-drop .photo-lbl');
+  if(lbl)lbl.style.display='';
+  const ft=document.getElementById('g-foto');
+  if(ft)ft.value='';
+  // Reset recurrencia
+  document.querySelectorAll('#rpills .rpill').forEach(p=>p.classList.remove('on'));
+  document.querySelector('#rpills .rpill[data-r="none"]')?.classList.add('on');
+  _recur='none';
+  document.getElementById('g-range-wrap').style.display='none';
+  document.querySelector('#mbg-gasto .modal-title').textContent='Añadir gasto';
+  document.getElementById('mbg-gasto').classList.add('open');
+}
+function openIngModal(){
+  _editIngId=null;
+  _ingRecur=false;
+  _canal='directo';
+  _iMet='bizum';
+  const ci=document.getElementById('i-ci');
+  if(ci)ci.value=new Date().toISOString().slice(0,10);
+  const co=document.getElementById('i-co');if(co)co.value='';
+  document.getElementById('i-guest').value='';
+  document.getElementById('i-bruto').value='';
+  document.getElementById('i-com').value='';
+  document.getElementById('i-neto').value='';
+  document.getElementById('i-privado').checked=false;
+  // Reset canal pills
+  document.querySelectorAll('#mbg-ing .tipo-pill').forEach((p,i)=>{
+    p.classList.remove('on');
+    if(i===2) p.classList.add('on'); // Directo por defecto
+  });
+  // Reset método cobro pills
+  document.querySelectorAll('#mpills-i .mpill').forEach((p,i)=>{
+    p.classList.remove('on');
+    if(i===1) p.classList.add('on'); // Bizum por defecto
+  });
+  // Reset recur pills
+  document.querySelectorAll('#ing-recur-pills .tipo-pill').forEach((p,i)=>p.classList.toggle('on',i===0));
+  document.getElementById('i-range-wrap').style.display='none';
+  document.getElementById('i-dates-wrap').style.display='block';
+  const mt=document.getElementById('ing-modal-title');
+  if(mt)mt.textContent='Añadir ingreso';
+  document.getElementById('mbg-ing').classList.add('open');
+}
+
+function renderGastosByMonth(){
+  // GV shown by month (like fijos)
+  const Q1m=PERIOD_DEFS[gastP].cols;
+  const MN={1:'Ene',2:'Feb',3:'Mar',4:'Abr',5:'May',6:'Jun',7:'Jul',8:'Ago',9:'Sep',10:'Oct',11:'Nov',12:'Dic'};
+  const byMonth={};
+  Q1m.forEach(m=>byMonth[m]=[]);
+  GASTOS_VAR.forEach((g,i)=>{
+    const gm=new Date(g.fecha).getMonth()+1;
+    if(Q1m.includes(gm)) byMonth[gm].push({g,i});
+  });
+  let html='<div style="overflow-x:auto"><table class="gtbl"><thead><tr><th>Mes</th><th>Concepto</th><th>Tipo</th><th>Cat.</th><th>Método</th><th>Importe</th><th></th></tr></thead><tbody>';
+  Q1m.forEach(m=>{
+    const items=byMonth[m];
+    if(!IS_REAL) items.forEach(({g})=>{if(g.privado)return;}); // filter
+    const visible=IS_REAL?items:items.filter(({g})=>!g.privado);
+    if(!visible.length)return;
+    visible.forEach(({g,i},j)=>{
+      const prTag=g.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">privado</span>`:'';
+      const fotoTag=g.foto?` <span style="font-size:9px;cursor:pointer;color:var(--gold)" onclick="showFoto('${g.id}')" title="Ver justificante">📷</span>`:'';
+      html+=`<tr style="${g.privado?'opacity:.8':''}">
+        <td style="font-weight:700;color:var(--text3)">${j===0?MN[m]:''}</td>
+        <td><span class="edit-link" onclick="editGasto('${g.id}')">${g.n}</span>${prTag}${fotoTag}</td>
+        <td><span class="tag ${g.tipo||'v'}">${g.tipo==='f'?'Fijo':'Var'}</span></td>
+        <td style="font-size:10px;color:var(--text2)">${g.cat}</td>
+        <td style="font-size:10px;color:var(--text2)">${g.metodo}</td>
+        <td class="${g.importe<0?'pos':'neg'}">${fn(g.importe)}</td>
+        <td><button onclick="delGasto(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">×</button></td>
+      </tr>`;
+    });
+  });
+  const tot=visibleGastosVar().filter(g=>Q1m.includes(new Date(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);
+  html+=`<tr class="tot-r"><td colspan="5">TOTAL ${IS_REAL?'(real)':'(fiscal)'}</td><td class="neg">${fn(tot)}</td><td></td></tr>`;
+  html+='</tbody></table></div>';
+  return html;
+}
+
+function showFoto(id){
+  const g=GASTOS_VAR.find(x=>x.id===id);
+  if(!g||!g.foto)return;
+  const w=window.open('','_blank','width=600,height=400');
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${g.foto}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+}
+
+
+function setTipo(t,btn){_gTipo=t;document.querySelectorAll('.tipo-pill').forEach(p=>{p.classList.remove('on');});btn.classList.add('on');}
+function setCanal(c,btn){_canal=c;document.querySelectorAll('#mbg-ing .tipo-pill').forEach(p=>p.classList.remove('on'));btn.classList.add('on');}
+function calcCom(){const b=parseFloat(document.getElementById('i-bruto').value)||0;const pct=_canal==='booking'?0.15:_canal==='airbnb'?0.03:0;const com=(b*pct).toFixed(2);document.getElementById('i-com').value=com;document.getElementById('i-neto').value=(b-com).toFixed(2);}
+function calcNeto(){const b=parseFloat(document.getElementById('i-bruto').value)||0;const c=parseFloat(document.getElementById('i-com').value)||0;document.getElementById('i-neto').value=(b-c).toFixed(2);}
+function pickMet(el,group,varName){document.querySelectorAll('#'+group+' .mpill').forEach(p=>p.classList.remove('on'));el.classList.add('on');if(varName==='g')_gMet=el.dataset.m;else _iMet=el.dataset.m;}
+function closeModals(){document.querySelectorAll('.mbg').forEach(m=>m.classList.remove('open'));}
+
+
+// ═══════════ INFORME ═══════════
+let infP='q1';
+function setInfPeriod(p,btn){
+  document.querySelectorAll('#inf-pills .pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  infP=p;
+  renderInforme();
+}
+
+function renderInforme(){
+  const pd=PERIOD_DEFS[infP];
+  const Q1m=pd.cols;
+  const mLabel=pd.label;
+  // Update mode badge
+  const mb=document.getElementById('inf-mode-badge');
+  if(mb){mb.textContent=IS_REAL?'REAL':'FISCAL';mb.style.color=IS_REAL?'var(--green)':'var(--blue)';}
+  const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
+  let h=`<thead><tr><th>Concepto</th>${Q1m.map(m=>`<th>${MN[m]}</th>`).join('')}<th>TOTAL ${mLabel}</th></tr></thead><tbody>`;
+  const ncols=Q1m.length+2;
+  h+=`<tr class="sec"><td colspan="${ncols}">▸ INGRESOS</td></tr>`;
+  [{l:'Booking.com — precio cobrado',c:'booking',f:'bruto'},
+   {l:'  Comision Booking',c:'booking',f:'com',isCom:true},
+   {l:'Airbnb — precio cobrado',c:'airbnb',f:'bruto'},
+   {l:'  Comision Airbnb',c:'airbnb',f:'com',isCom:true},
+   {l:'Directo (Bizum / Transf)',c:'directo',f:'neto'},
+  ].forEach(r=>{
+    const ms=Q1m.map(m=>visibleReservas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));
+    const tot=ms.reduce((a,b)=>a+b,0);
+    h+=`<tr ${r.isCom?'style="opacity:.7"':''}><td ${r.isCom?'style="padding-left:14px;font-size:10px;color:var(--text3)"':''}>${r.l}</td>${ms.map(v=>`<td class="${r.isCom?'neg dim':v?'pos':''}">${v?fn(Math.abs(v)):''}</td>`).join('')}<td class="${r.isCom?'neg':tot?'pos':''}">${tot?fn(Math.abs(tot)):''}</td></tr>`;
+  });
+  const ibT=ingTotal(Q1m,'bruto'),cA=Math.abs(comTotal(Q1m)),inT=ingTotal(Q1m,'neto');
+  h+=`<tr class="tot"><td>TOTAL INGRESOS BRUTOS</td>${Q1m.map(m=>`<td class="pos">${fn0(ingTotal([m],'bruto'))}</td>`).join('')}<td class="pos">${fn0(ibT)}</td></tr>`;
+  h+=`<tr class="tot"><td style="padding-left:12px;font-size:10px">↳ comisiones OTA</td>${Q1m.map(m=>`<td class="neg dim">${Math.abs(comTotal([m]))?fn(Math.abs(comTotal([m]))):''}</td>`).join('')}<td class="neg">${cA?fn(cA):''}</td></tr>`;
+  h+=`<tr class="tot" style="background:var(--green-bg)"><td style="color:var(--green)">INGRESOS NETOS</td>${Q1m.map(m=>`<td class="pos">${fn0(ingTotal([m],'neto'))}</td>`).join('')}<td class="pos">${fn0(inT)}</td></tr>`;
+  h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS FIJOS</td></tr>`;
+  visibleGastosFijos().forEach(g=>{const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);h+=`<tr><td>${g.n}</td>${Q1m.map(m=>`<td class="${g.m[m]?'neg':''}">${g.m[m]?fn(g.m[m]):''}</td>`).join('')}<td class="neg">${tot?fn(tot):''}</td></tr>`;});
+  const gfT=gFijo(Q1m);  // uses visibleGastosFijos() internally
+  h+=`<tr class="tot"><td>SUBTOTAL GASTOS FIJOS</td>${Q1m.map(m=>`<td class="neg">${fn(gFijo([m]))}</td>`).join('')}<td class="neg">${fn(gfT)}</td></tr>`;
+  h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS VARIABLES</td></tr>`;
+  visibleGastosVar().forEach(g=>{const gm=new Date(g.fecha).getMonth()+1;h+=`<tr><td>${g.n} <span class="dim">(${g.fecha})</span></td>${Q1m.map(m=>`<td class="${m===gm&&g.importe>0?'neg':m===gm&&g.importe<0?'pos':''}">${m===gm&&g.importe?fn(g.importe):''}</td>`).join('')}<td class="${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td></tr>`;});
+  const gvT=gVar(Q1m);
+  h+=`<tr class="tot"><td>SUBTOTAL GASTOS VARIABLES</td>${Q1m.map(m=>`<td class="${gVar([m])?'neg':''}">${gVar([m])?fn(gVar([m])):''}</td>`).join('')}<td class="${gvT<0?'pos':'neg'}">${gvT?fn(gvT):''}</td></tr>`;
+  const gT=gfT+gvT,res=inT-gT;
+  h+=`<tr class="sec"><td colspan="${ncols}">▸ RESULTADO</td></tr>`;
+  h+=`<tr class="tot"><td>TOTAL GASTOS</td>${Q1m.map(m=>`<td class="neg">${fn0(gTot([m]))}</td>`).join('')}<td class="neg">${fn0(gT)}</td></tr>`;
+  h+=`<tr class="tot" style="background:rgba(200,168,74,.07)"><td style="font-family:'Playfair Display',serif;font-size:13px;color:var(--gold)">RESULTADO NETO</td>${Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return`<td class="${n>=0?'pos':'neg'}">${fn0(n)}</td>`;}).join('')}<td class="${res>=0?'gold':'neg'}" style="font-size:13px">${fn0(res)}</td></tr>`;
+  h+=`</tbody>`;document.getElementById('inf-tbl').innerHTML=h;
+}
+
+function exportCSV(){
+  const Q1m=PERIOD_DEFS[infP].cols;
+  const mLabel=PERIOD_DEFS[infP].label;
+  const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
+  const fv=v=>v?String(v.toFixed(2)):'';
+  let csv=`\uFEFFConcepto,${Q1m.map(m=>MN[m]).join(',')},Total ${mLabel}\n--- INGRESOS ---${','.repeat(Q1m.length+1)}\n`;
+  [{l:'Booking bruto',c:'booking',f:'bruto'},{l:'Comisión Booking',c:'booking',f:'com',abs:true},
+   {l:'Airbnb bruto',c:'airbnb',f:'bruto'},{l:'Comisión Airbnb',c:'airbnb',f:'com',abs:true},{l:'Directo',c:'directo',f:'neto'}
+  ].forEach(r=>{const ms=Q1m.map(m=>visibleReservas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));const fn2=v=>r.abs?fv(Math.abs(v)):fv(v);csv+=`${r.l},${ms.map(fn2).join(',')},${fn2(ms.reduce((a,b)=>a+b,0))}\n`;});
+  csv+=`INGRESOS NETOS,${Q1m.map(m=>fv(ingTotal([m],'neto'))).join(',')},${fv(ingTotal(Q1m,'neto'))}\n--- GASTOS FIJOS ---,,,,\n`;
+  visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${g.n},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
+  csv+=`--- GASTOS VARIABLES ---,,,,\n`;
+  visibleGastosVar().forEach(g=>{const gm=new Date(g.fecha).getMonth()+1;csv+=`${g.n},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
+  csv+=`TOTAL GASTOS,${Q1m.map(m=>fv(gTot([m]))).join(',')},${fv(gTot(Q1m))}\nRESULTADO NETO,${Q1m.map(m=>fv(ingTotal([m],'neto')-gTot([m]))).join(',')},${fv(ingTotal(Q1m,'neto')-gTot(Q1m))}\n`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`hostal_matildas_${infP}_2026.csv`;a.click();notif('CSV exportado');
+}
+
+// ═══════════ GASTOS FIJOS CRUD ═══════════
+let _editFijoId=null, _fijoDist='monthly';
+
+function setFijoDist(dist, btn){
+  _fijoDist=dist;
+  document.querySelectorAll('#fijo-dist-pills .tipo-pill').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('f-single-wrap').style.display=(dist==='custom')?'none':'block';
+  document.getElementById('f-months-apply-wrap').style.display=(dist==='total')?'block':'none';
+  document.getElementById('f-custom-wrap').style.display=(dist==='custom')?'block':'none';
+  const lbl=document.getElementById('f-importe-lbl');
+  if(lbl) lbl.textContent=dist==='monthly'?'Importe mensual (€)':'Total anual (€)';
+}
+
+function openFijoModal(id){
+  _editFijoId=id||null;
+  _fijoDist='monthly';
+  document.getElementById('fijo-modal-title').textContent=id?'Editar gasto fijo':'Añadir gasto fijo';
+  document.getElementById('f-nombre').value='';
+  document.getElementById('f-importe').value='';
+  document.getElementById('f-importe-puntual').value='';
+  document.querySelectorAll('#fijo-dist-pills .tipo-pill').forEach((p,i)=>{p.classList.toggle('on',i===0);});
+  document.getElementById('f-single-wrap').style.display='block';
+  document.getElementById('f-months-apply-wrap').style.display='none';
+  document.getElementById('f-custom-wrap').style.display='none';
+  // Uncheck all month checkboxes
+  for(let m=1;m<=12;m++){const cb=document.getElementById('fm-'+m);if(cb)cb.checked=false;}
+  if(id){
+    const g=GASTOS_FIJOS.find(x=>x.id===id);
+    if(g){
+      document.getElementById('f-nombre').value=g.n;
+      document.getElementById('f-cat').value=g.cat||'otros';
+      // Detect distribution type
+      const vals=Object.values(g.m);
+      const nonZero=vals.filter(v=>v>0);
+      const allSame=nonZero.length>0&&nonZero.every(v=>Math.abs(v-nonZero[0])<0.01);
+      if(allSame&&nonZero.length===12){
+        _fijoDist='monthly';
+        document.getElementById('f-importe').value=nonZero[0];
+        document.querySelectorAll('#fijo-dist-pills .tipo-pill')[0].classList.add('on');
+        document.querySelectorAll('#fijo-dist-pills .tipo-pill')[1].classList.remove('on');
+        document.querySelectorAll('#fijo-dist-pills .tipo-pill')[2].classList.remove('on');
+      } else if(allSame&&nonZero.length<12){
+        _fijoDist='total';
+        document.getElementById('f-importe-puntual').value=nonZero[0];
+        setFijoDist('total',document.querySelectorAll('#fijo-dist-pills .tipo-pill')[1]);
+        for(let m=1;m<=12;m++){if(g.m[m]){const cb=document.getElementById('fm-'+m);if(cb)cb.checked=true;}}
+      } else {
+        setFijoDist('custom',document.querySelectorAll('#fijo-dist-pills .tipo-pill')[2]);
+        for(let m=1;m<=12;m++){const inp=document.getElementById('fcm-'+m);if(inp)inp.value=g.m[m]||'';}
+      }
+    }
+  }
+  document.getElementById('mbg-fijo').classList.add('open');
+}
+function editFijo(id){ openFijoModal(id); }
+
+function delFijo(id){
+  const g=GASTOS_FIJOS.find(x=>x.id===id);
+  if(!g)return;
+  const msg=g.sys?`¿Eliminar "${g.n}" de los gastos fijos?\n\nEs un gasto del sistema, puedes recuperarlo reseteando.`:`¿Eliminar "${g.n}"?`;
+  if(!confirm(msg))return;
+  if(g.sys){
+    const deleted=JSON.parse(localStorage.getItem('gf_deleted')||'[]');
+    if(!deleted.includes(id)) deleted.push(id);
+    localStorage.setItem('gf_deleted',JSON.stringify(deleted));
+  }
+  const idx=GASTOS_FIJOS.findIndex(x=>x.id===id);
+  if(idx>-1) GASTOS_FIJOS.splice(idx,1);
+  saveGastosFijos();
+  renderGastos(); renderDashboard();
+  notif('Gasto fijo eliminado');
+}
+
+function saveFijo(){
+  const nombre=document.getElementById('f-nombre').value.trim();
+  const cat=document.getElementById('f-cat').value;
+  if(!nombre){alert('Indica un nombre');return;}
+  let meses={};
+  if(_fijoDist==='monthly'){
+    const v=parseFloat(document.getElementById('f-importe').value)||0;
+    if(!v){alert('Indica el importe mensual');return;}
+    for(let m=1;m<=12;m++) meses[m]=v;
+  } else if(_fijoDist==='total'){
+    const v=parseFloat(document.getElementById('f-importe-puntual').value)||0;
+    if(!v){alert('Indica el importe por pago');return;}
+    let anyChecked=false;
+    for(let m=1;m<=12;m++){
+      const cb=document.getElementById('fm-'+m);
+      if(cb&&cb.checked){meses[m]=v;anyChecked=true;}else{meses[m]=0;}
+    }
+    if(!anyChecked){alert('Selecciona al menos un mes');return;}
+  } else {
+    for(let m=1;m<=12;m++){
+      const inp=document.getElementById('fcm-'+m);
+      meses[m]=parseFloat(inp?.value)||0;
+    }
+    if(!Object.values(meses).some(v=>v>0)){alert('Introduce al menos un valor');return;}
+  }
+  if(_editFijoId){
+    const idx=GASTOS_FIJOS.findIndex(x=>x.id===_editFijoId);
+    if(idx>-1) GASTOS_FIJOS[idx]={...GASTOS_FIJOS[idx],n:nombre,cat,m:meses};
+  } else {
+    GASTOS_FIJOS.push({id:'gf'+Date.now(),n:nombre,cat,m:meses,sys:false});
+  }
+  saveGastosFijos();
+  closeModals();
+  renderGastos(); renderDashboard();
+  notif(_editFijoId?'Gasto fijo actualizado':'Gasto fijo añadido');
+  _editFijoId=null;
+}
+
+async function exportPDF(){
+  notif('Generando PDF...');
+  try{
+    // Load jsPDF
+    if(!window.jspdf){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload=res;s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pd=PERIOD_DEFS[infP];
+    const Q1m=pd.cols;
+    const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
+    const mNames=Q1m.map(m=>MN[m]);
+    const mLabel=pd.label;
+    const mode=IS_REAL?'REAL':'FISCAL';
+    const W=210,M=15;
+
+    // Header
+    doc.setFillColor(13,13,11);
+    doc.rect(0,0,W,28,'F');
+    doc.setTextColor(200,168,74);
+    doc.setFontSize(18);
+    doc.setFont('helvetica','bold');
+    doc.text("Hostal Matilda's",M,12);
+    doc.setFontSize(10);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(154,150,144);
+    doc.text('Informe Gestora · '+mLabel+' · Modo '+mode,M,19);
+    doc.text('Generado: '+new Date().toLocaleDateString('es-ES'),M,25);
+    doc.setTextColor(0,0,0);
+
+    let y=35;
+    const lineH=6;
+    const colW=(W-2*M-40)/(Q1m.length+1);
+
+    function drawHeader(title){
+      doc.setFillColor(37,36,32);
+      doc.rect(M,y,W-2*M,6,'F');
+      doc.setTextColor(154,150,144);
+      doc.setFontSize(8);
+      doc.setFont('helvetica','bold');
+      doc.text(title.toUpperCase(),M+2,y+4);
+      doc.setTextColor(0,0,0);
+      y+=7;
+    }
+
+    function drawRow(label,vals,total,color,indent){
+      if(y>270){doc.addPage();y=15;}
+      doc.setFontSize(8);
+      doc.setFont('helvetica',color?'bold':'normal');
+      if(color){doc.setTextColor(...color);}else{doc.setTextColor(60,60,60);}
+      doc.text((indent?'  ':'')+label,M,y+3.5,{maxWidth:38});
+      vals.forEach((v,i)=>{
+        const x=M+40+i*colW;
+        if(v){doc.text(fn0(v).replace('€',''),x+colW-2,y+3.5,{align:'right'});}
+      });
+      if(total!==null){doc.text(fn0(total).replace('€',''),W-M-2,y+3.5,{align:'right'});}
+      doc.setTextColor(0,0,0);
+      y+=lineH;
+    }
+
+    // Column headers
+    doc.setFillColor(22,22,20);
+    doc.rect(M,y,W-2*M,6,'F');
+    doc.setTextColor(200,168,74);
+    doc.setFontSize(7);
+    doc.setFont('helvetica','bold');
+    doc.text('Concepto',M+2,y+4);
+    mNames.forEach((mn,i)=>doc.text(mn,(M+40+i*colW)+colW-2,y+4,{align:'right'}));
+    doc.text('TOTAL',W-M-2,y+4,{align:'right'});
+    doc.setTextColor(0,0,0);
+    y+=7;
+
+    // INGRESOS
+    drawHeader('>> INGRESOS');
+    const canales=[
+      {l:'Booking.com (bruto)',c:'booking',f:'bruto'},
+      {l:'↳ Comisión Booking',c:'booking',f:'com',indent:true,neg:true},
+      {l:'Airbnb (bruto)',c:'airbnb',f:'bruto'},
+      {l:'↳ Comisión Airbnb',c:'airbnb',f:'com',indent:true,neg:true},
+      {l:'Directo (Bizum/Transf.)',c:'directo',f:'neto'},
+    ];
+    canales.forEach(r=>{
+      const vals=Q1m.map(m=>visibleReservas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));
+      const tot=vals.reduce((a,b)=>a+b,0);
+      if(tot)drawRow(r.l,vals.map(v=>Math.abs(v)||null),Math.abs(tot)||null,r.neg?[191,95,74]:null,r.indent);
+    });
+    const ibT=ingTotal(Q1m,'bruto');
+    const cA=Math.abs(comTotal(Q1m));
+    const inT=ingTotal(Q1m,'neto');
+    drawRow('TOTAL INGRESOS BRUTOS',Q1m.map(m=>ingTotal([m],'bruto')),ibT,[90,158,114]);
+    drawRow('  Comisiones OTA',Q1m.map(m=>Math.abs(comTotal([m]))||null),cA||null,[191,95,74],true);
+    drawRow('INGRESOS NETOS',Q1m.map(m=>ingTotal([m],'neto')),inT,[90,158,114]);
+    y+=2;
+
+    // GASTOS FIJOS
+    drawHeader('>> GASTOS FIJOS');
+    visibleGastosFijos().forEach(g=>{
+      const vals=Q1m.map(m=>g.m[m]||null);
+      const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);
+      if(tot)drawRow(g.n,vals,tot,[191,95,74]);
+    });
+    const gfT=gFijo(Q1m);
+    drawRow('SUBTOTAL GASTOS FIJOS',Q1m.map(m=>gFijo([m])),gfT,[191,95,74]);
+    y+=2;
+
+    // GASTOS VARIABLES
+    drawHeader('>> GASTOS VARIABLES');
+    visibleGastosVar().forEach(g=>{
+      const gm=new Date(g.fecha).getMonth()+1;
+      if(!Q1m.includes(gm))return;
+      const vals=Q1m.map(m=>m===gm?g.importe:null);
+      drawRow(g.n,vals,g.importe,[191,95,74]);
+    });
+    const gvT=gVar(Q1m);
+    drawRow('SUBTOTAL GASTOS VARIABLES',Q1m.map(m=>gVar([m])),gvT,[191,95,74]);
+    y+=2;
+
+    // RESULTADO
+    drawHeader('>> RESULTADO');
+    const gT=gfT+gvT;
+    drawRow('TOTAL GASTOS',Q1m.map(m=>gTot([m])),gT,[191,95,74]);
+    const res=inT-gT;
+    doc.setFillColor(res>=0?13:40,res>=0?40:13,res>=0?13:13,20);
+    doc.rect(M,y,W-2*M,7,'F');
+    drawRow('RESULTADO NETO',Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return n;}),res,res>=0?[90,158,114]:[191,95,74]);
+
+    // JUSTIFICANTES — new page with photos
+    const gastosFoto=visibleGastosVar().filter(g=>g.foto&&Q1m.includes(new Date(g.fecha).getMonth()+1));
+    if(gastosFoto.length){
+      doc.addPage();
+      doc.setFillColor(13,13,11);
+      doc.rect(0,0,W,15,'F');
+      doc.setTextColor(200,168,74);
+      doc.setFontSize(13);
+      doc.setFont('helvetica','bold');
+      doc.text('Justificantes · '+mLabel,M,10);
+      doc.setTextColor(0,0,0);
+      let jy=20;
+      for(const g of gastosFoto){
+        if(jy>240){doc.addPage();jy=15;}
+        doc.setFontSize(8);
+        doc.setFont('helvetica','bold');
+        doc.setTextColor(60,60,60);
+        doc.text(g.n+' — '+g.fecha+' — '+fn(g.importe),M,jy);
+        jy+=3;
+        try{
+          if(g.foto&&(g.foto.startsWith('data:image')||g.foto.startsWith('data:application/octet'))){
+            const imgType=g.foto.includes('jpeg')?'JPEG':'PNG';
+            doc.addImage(g.foto,imgType,M,jy,80,60,'','FAST');
+            jy+=65;
+          } else if(g.foto.startsWith('data:application/pdf')){
+            doc.setFontSize(8);
+            doc.setTextColor(154,150,144);
+            doc.text('[Adjunto PDF — ver archivo original]',M,jy+5);
+            jy+=12;
+          }
+        }catch(e){jy+=5;}
+        jy+=4;
+      }
+    }
+
+    doc.save('hostal_matildas_informe_'+infP+'_2026.pdf');
+    notif('PDF generado ✓');
+  }catch(e){
+    console.error('PDF error:',e);
+    notif('Error generando PDF: '+e.message);
+  }
+}
+
+function notif(msg){const n=document.getElementById('notif');n.textContent='✓ '+msg;n.classList.add('on');setTimeout(()=>n.classList.remove('on'),3000);}
+
+function resetFijos(){
+  if(!confirm('¿Restaurar los gastos fijos del sistema? Perderás las eliminaciones pero no los que hayas añadido.'))return;
+  localStorage.removeItem('gf_deleted');
+  localStorage.removeItem('gf6');
+  GASTOS_FIJOS.length=0;
+  GASTOS_FIJOS.push(...loadGastosFijos());
+  renderGastos(); renderDashboard();
+  notif('Gastos fijos del sistema restaurados');
+}
+
+// ═══════════ FIREBASE SYNC ═══════════
+const _fb={
+  apiKey:"AIzaSyCNWeJtTV9ZQ9hOJWIO59OO-TBUBHt6xbA",
+  authDomain:"gestor-hostal.firebaseapp.com",
+  projectId:"gestor-hostal",
+  storageBucket:"gestor-hostal.firebasestorage.app",
+  messagingSenderId:"757250291767",
+  appId:"1:757250291767:web:c0de75a7a70b7ff875e7b2"
+};
+let _db=null,_syncEnabled=false,_syncing=false;
+
+async function initFirebase(){
+  try{
+    const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const {getFirestore,doc,setDoc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const app=initializeApp(_fb);
+    _db=getFirestore(app);
+    _syncEnabled=true;
+    const sd=document.getElementById('sync-dot');
+    if(sd){sd.style.display='inline-block';sd.style.background='var(--gold)';}
+    // Generate unique device ID if not exists
+    if(!localStorage.getItem('_deviceId')){
+      localStorage.setItem('_deviceId','dev_'+Math.random().toString(36).slice(2));
+    }
+    const _deviceId=localStorage.getItem('_deviceId');
+
+    // Load from Firebase first
+    const ref=doc(_db,'hostal','datos');
+    const snap=await getDoc(ref);
+    if(snap.exists()){
+      _syncing=true;
+      const d=snap.data();
+      if(d.ing_extra){RESERVAS_EXTRA=d.ing_extra;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));}
+      if(d.gv5){GASTOS_VAR=d.gv5;localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));}
+      if(d.gf6){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));}
+      _syncing=false;
+    }
+    renderDashboard();
+    if(sd)sd.style.background='var(--green)';
+
+    // POLLING every 15s instead of onSnapshot (works with all browsers/blockers)
+    async function pollFirebase(){
+      if(!_syncEnabled||!_db||_syncing)return;
+      try{
+        const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        const psnap=await getDoc(doc(_db,'hostal','datos'));
+        if(!psnap.exists())return;
+        const d=psnap.data();
+        if(d.writtenBy===_deviceId)return; // our own write, skip
+        _syncing=true;
+        let changed=false;
+        if(d.ing_extra&&JSON.stringify(d.ing_extra)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=d.ing_extra;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));changed=true;}
+        if(d.gv5&&JSON.stringify(d.gv5)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=d.gv5;localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));changed=true;}
+        if(d.gf6&&JSON.stringify(d.gf6)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));changed=true;}
+        _syncing=false;
+        if(changed){
+          ['dashboard','habitaciones','gastos','informe'].forEach(id=>{
+            if(document.getElementById('page-'+id).classList.contains('on')){
+              if(id==='dashboard')renderDashboard();
+              if(id==='habitaciones')renderHabs();
+              if(id==='gastos')renderGastos();
+              if(id==='informe')renderInforme();
+            }
+          });
+          notif('🔄 Sincronizado');
+        }
+      }catch(e){_syncing=false;}
+    }
+    setInterval(pollFirebase, 15000);
+  }catch(e){
+    console.error('Firebase:',e);
+    renderDashboard();
+  }
+}
+
+async function syncToFirebase(){
+  if(!_syncEnabled||!_db||_syncing)return;
+  try{
+    const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const ts=Date.now();
+    const deviceId=localStorage.getItem('_deviceId')||'unknown';
+    localStorage.setItem('_lastSync',String(ts));
+    await setDoc(doc(_db,'hostal','datos'),{
+      ing_extra:RESERVAS_EXTRA,
+      gv5:GASTOS_VAR,
+      gf6:GASTOS_FIJOS,
+      gf_deleted:JSON.parse(localStorage.getItem('gf_deleted')||'[]'),
+      updated:ts,
+      writtenBy:deviceId
+    });
+  }catch(e){console.error('Sync error:',e);}
+}
+
+// Auto-sync on every localStorage write — but not during incoming sync
+(function(){
+  const orig=localStorage.setItem.bind(localStorage);
+  localStorage.setItem=function(k,v){
+    orig(k,v);
+    if(!_syncing&&['ing_extra','gv5','gf6','gf_deleted'].includes(k))syncToFirebase();
+  };
+})();
+
+initFirebase();
+</script>
+<!-- MODAL GASTO FIJO -->
+<div class="mbg" id="mbg-fijo">
+  <div class="modal">
+    <div class="modal-title" id="fijo-modal-title">Añadir gasto fijo</div>
+    <div class="fg"><label class="fl">Nombre</label><input type="text" class="fi" id="f-nombre" placeholder="ej. Seguro hogar"></div>
+    <div class="fg"><label class="fl">Categoría</label>
+      <select class="fs" id="f-cat">
+        <option value="fiscal">Fiscal / Impuestos</option>
+        <option value="financiero">Financiero / Hipoteca</option>
+        <option value="inmueble">Inmueble / Seguros</option>
+        <option value="suministros">Suministros</option>
+        <option value="tecnologia">Tecnología</option>
+        <option value="limpieza">Limpieza</option>
+        <option value="otros">Otros</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">¿Cómo se distribuye?</label>
+      <div class="tipo-pills" id="fijo-dist-pills">
+        <button type="button" class="tipo-pill v on" onclick="setFijoDist('monthly',this)">Mensual fijo</button>
+        <button type="button" class="tipo-pill f" onclick="setFijoDist('total',this)">Meses concretos</button>
+        <button type="button" class="tipo-pill f" onclick="setFijoDist('custom',this)">Por mes</button>
+      </div>
+    </div>
+    <div class="fg" id="f-single-wrap">
+      <label class="fl" id="f-importe-lbl">Importe mensual (€)</label>
+      <input type="number" class="fi" id="f-importe" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="fg" id="f-months-apply-wrap" style="display:none">
+      <label class="fl">Meses donde se paga</label>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;"><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-1" style="width:12px;height:12px"> Ene</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-2" style="width:12px;height:12px"> Feb</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-3" style="width:12px;height:12px"> Mar</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-4" style="width:12px;height:12px"> Abr</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-5" style="width:12px;height:12px"> May</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-6" style="width:12px;height:12px"> Jun</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-7" style="width:12px;height:12px"> Jul</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-8" style="width:12px;height:12px"> Ago</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-9" style="width:12px;height:12px"> Sep</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-10" style="width:12px;height:12px"> Oct</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-11" style="width:12px;height:12px"> Nov</label><label style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;padding:3px 6px;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2)"><input type="checkbox" id="fm-12" style="width:12px;height:12px"> Dic</label></div>
+      <input type="number" class="fi" id="f-importe-puntual" placeholder="Importe por pago (€)" step="0.01" min="0" style="margin-top:8px">
+    </div>
+    <div class="fg" id="f-custom-wrap" style="display:none">
+      <label class="fl">Importe por mes (€)</label>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px;"><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Ene</label><input type="number" class="fi" id="fcm-1" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Feb</label><input type="number" class="fi" id="fcm-2" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Mar</label><input type="number" class="fi" id="fcm-3" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Abr</label><input type="number" class="fi" id="fcm-4" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">May</label><input type="number" class="fi" id="fcm-5" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Jun</label><input type="number" class="fi" id="fcm-6" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Jul</label><input type="number" class="fi" id="fcm-7" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Ago</label><input type="number" class="fi" id="fcm-8" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Sep</label><input type="number" class="fi" id="fcm-9" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Oct</label><input type="number" class="fi" id="fcm-10" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Nov</label><input type="number" class="fi" id="fcm-11" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div><div><label style="font-size:9px;color:var(--text3);display:block;margin-bottom:2px">Dic</label><input type="number" class="fi" id="fcm-12" placeholder="0" step="0.01" min="0" style="padding:5px 7px;font-size:11px"></div></div>
+    </div>
+    <div class="mact">
+      <button class="btn-cl" onclick="closeModals()">Cancelar</button>
+      <button class="btn-ok" onclick="saveFijo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
