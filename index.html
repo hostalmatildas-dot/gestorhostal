@@ -435,7 +435,8 @@ body.real-mode .real-badge{display:inline-flex;}
       <button class="pill"     onclick="setPeriod('3',this)">Mar</button>
       <button class="pill"     onclick="setPeriod('4',this)">Abr</button>
     </div>
-    <button class="ing-btn" onclick="openIngModal()" style="margin-left:auto">+ Añadir ingreso</button>
+    <button class="ing-btn" onclick="document.getElementById('recon-input').click()" style="margin-left:auto;background:var(--gold-bg,rgba(200,168,74,.12));border-color:var(--gold);color:var(--gold)">📥 Importar de Booking/Airbnb</button>
+    <button class="ing-btn" onclick="openIngModal()">+ Añadir ingreso</button>
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="balance-row" id="bal-cards"></div>
@@ -671,6 +672,7 @@ body.real-mode .real-badge{display:inline-flex;}
 <div class="mbg" id="mbg-ing">
   <div class="modal">
     <div class="modal-title" style="color:var(--green)" id="ing-modal-title">Añadir ingreso</div>
+    <button type="button" onclick="closeModals();document.getElementById('recon-input').click()" style="width:100%;margin-bottom:12px;padding:9px;background:var(--gold-bg,rgba(200,168,74,.12));border:1px solid var(--gold);border-radius:var(--rs);color:var(--gold);font-size:12px;cursor:pointer">📥 ¿Tienes un Excel o PDF de Booking/Airbnb? Súbelo y compáralo con el PMS</button>
     <div class="fg"><label class="fl">Habitación</label>
       <select class="fs" id="i-room">
         <option>HB 1</option><option>HB 2</option><option>HB 3</option><option>HB 4</option>
