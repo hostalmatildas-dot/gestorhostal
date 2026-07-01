@@ -368,6 +368,8 @@ body.real-mode .real-badge{display:inline-flex;}
 .btn-cl{padding:8px 12px;background:transparent;border:1px solid var(--border2);border-radius:var(--rs);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;}
 .notif{position:fixed;bottom:18px;right:18px;background:var(--green);color:#fff;padding:9px 16px;border-radius:var(--rs);font-size:11px;font-weight:600;z-index:800;transform:translateY(50px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);}
 .notif.on{transform:translateY(0);opacity:1;}
+.edit-link{cursor:pointer;border-bottom:1px dotted var(--text3);transition:color .15s;}
+.edit-link:hover{color:var(--gold);border-bottom-color:var(--gold);}
 </style>
 </head>
 <body>
@@ -1815,7 +1817,7 @@ function renderGastosByMonth(){
         <td style="font-size:10px;color:var(--text2)">${g.cat}</td>
         <td style="font-size:10px;color:var(--text2)">${g.metodo}</td>
         <td class="${g.importe<0?'pos':'neg'}">${fn(g.importe)}</td>
-        <td><button onclick="delGasto(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">×</button></td>
+        <td style="white-space:nowrap"><button onclick="editGasto('${g.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 3px" title="Editar">✎</button><button onclick="delGasto(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 3px" title="Eliminar">×</button></td>
       </tr>`;
     });
   });
