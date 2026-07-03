@@ -6,3 +6,10 @@
   from = "/api/anthropic"
   to = "/.netlify/functions/anthropic"
   status = 200
+
+# El inventario de plataformas es PRIVADO: la CLI lo sube igualmente, así que se bloquea aquí
+[[redirects]]
+  from = "/INVENTARIO_PLATAFORMAS.csv"
+  to = "/index.html"
+  status = 404
+  force = true
