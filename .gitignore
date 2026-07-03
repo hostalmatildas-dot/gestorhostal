@@ -1,0 +1,6 @@
+# Inventario privado de cuentas/plataformas — no subir al repo
+INVENTARIO_PLATAFORMAS.csv
+
+# Config local de Netlify
+.netlify/
+.DS_Store
