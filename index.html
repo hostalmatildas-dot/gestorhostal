@@ -218,6 +218,22 @@
 </div>
 </div>
 
+<!-- MODAL LOGIN SYNC -->
+<div class="mbg" id="mbg-login">
+  <div class="modal">
+    <div class="modal-title">Sincronización protegida</div>
+    <form id="login-form" autocomplete="on" onsubmit="return submitLogin(event)">
+      <div class="fg"><label class="fl">Email</label><input type="email" class="fi" id="login-email" name="username" autocomplete="username" required></div>
+      <div class="fg"><label class="fl">Contraseña</label><input type="password" class="fi" id="login-pass" name="password" autocomplete="current-password" required></div>
+      <div class="fg" id="login-error" style="color:var(--red);font-size:11px;display:none"></div>
+      <div class="mact">
+        <button type="button" class="btn-cl" onclick="cancelLogin()">Cancelar</button>
+        <button type="submit" class="btn-ok">Entrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL GASTO -->
 <div class="mbg" id="mbg-gasto">
   <div class="modal">

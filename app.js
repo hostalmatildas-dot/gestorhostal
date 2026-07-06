@@ -1618,27 +1618,48 @@ let _db=null,_syncEnabled=false,_syncing=false;
 // ── Login de sincronización ──
 // Mientras las reglas de Firestore estén abiertas no se pide nada.
 // Cuando estén protegidas (exigen usuario), al detectar "permiso denegado" se pide
-// email/contraseña UNA vez por dispositivo; Firebase guarda la sesión.
-let _auth=null,_signInFn=null;
+// email/contraseña con un <form> real (no prompt()) para que el navegador pueda
+// ofrecer guardarla y autorrellenarla la próxima vez; además Firebase guarda la sesión.
+let _auth=null,_signInFn=null,_loginResolve=null;
 async function initAuth(app){
   const m=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
   _auth=m.getAuth(app);
   _signInFn=m.signInWithEmailAndPassword;
+  await m.setPersistence(_auth,m.browserLocalPersistence);
   // Espera a que Firebase restaure la sesión guardada en este navegador (si la hay)
   await new Promise(res=>{const un=m.onAuthStateChanged(_auth,()=>{un();res();});});
 }
-async function askLogin(){
-  if(_auth&&_auth.currentUser)return true;
-  if(!_auth||!_signInFn)return false;
-  const email=(prompt('Sincronización protegida · email de Firebase:',localStorage.getItem('syncEmail')||'')||'').trim();
-  const pass=email?(prompt('Contraseña de sincronización:')||''):'';
-  if(!email||!pass)return false;
+function askLogin(){
+  if(_auth&&_auth.currentUser)return Promise.resolve(true);
+  if(!_auth||!_signInFn)return Promise.resolve(false);
+  return new Promise(resolve=>{
+    _loginResolve=resolve;
+    document.getElementById('login-email').value=localStorage.getItem('syncEmail')||'';
+    document.getElementById('login-pass').value='';
+    document.getElementById('login-error').style.display='none';
+    document.getElementById('mbg-login').classList.add('open');
+  });
+}
+function cancelLogin(){
+  document.getElementById('mbg-login').classList.remove('open');
+  if(_loginResolve){_loginResolve(false);_loginResolve=null;}
+}
+async function submitLogin(ev){
+  ev.preventDefault();
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  const errEl=document.getElementById('login-error');
   try{
     await _signInFn(_auth,email,pass);
     localStorage.setItem('syncEmail',email);
+    document.getElementById('mbg-login').classList.remove('open');
     notif('Sincronización conectada');
-    return true;
-  }catch(e){notif('Login falló: '+(e.code||e.message),true);return false;}
+    if(_loginResolve){_loginResolve(true);_loginResolve=null;}
+  }catch(e){
+    errEl.textContent='Email o contraseña incorrectos';
+    errEl.style.display='block';
+  }
+  return false;
 }
 
 async function initFirebase(){
