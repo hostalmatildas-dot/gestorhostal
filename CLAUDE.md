@@ -15,7 +15,8 @@ App estática sin build: se abre `index.html` y ya. Sin npm, sin bundler.
 
 ## Despliegue
 - GitHub Pages: push a `main` en `hostalmatildas-dot/gestorhostal` → https://hostalmatildas-dot.github.io/gestorhostal/ (workflow `.github/workflows/pages.yml`).
-- Netlify (sitio `hostal-matildas`, alberga el proxy de la IA): `netlify deploy --prod`. La app llama al proxy por URL absoluta (`PROXY_URL` en app.js), así la IA funciona desde ambos dominios.
+- Netlify (sitio `gestorhostal-proxy`, cuenta `hostalmatildas@gmail.com` / equipo "Super Hostal", alberga el proxy de la IA): `netlify deploy --prod`. La app llama al proxy por URL absoluta (`PROXY_URL` en app.js = `https://gestorhostal-proxy.netlify.app/api/anthropic`), así la IA funciona desde ambos dominios.
+- ⚠️ **13 jul 2026**: el sitio anterior (`hostal-matildas`, en la cuenta `rewendolin@gmail.com`) fue borrado por error creyendo que era un señuelo sin uso de la web del hostal — rompió el OCR de tickets hasta que se recreó el proxy en `gestorhostal-proxy`. Lección: antes de borrar cualquier sitio Netlify, comprobar con `grep -r "netlify.app" .` en todos los proyectos del Mac si alguna app lo usa como backend, no solo si tiene tráfico web visible.
 
 ## Reglas fijas
 - **Nunca estimar ni inventar gastos/ingresos**: sin documento (ticket, factura, informe) no se carga nada.

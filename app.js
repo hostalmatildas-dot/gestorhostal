@@ -579,7 +579,7 @@ function getAppSecret(){
 }
 // Llama a la IA a través de nuestro proxy en Netlify (la clave vive en el servidor, no aquí).
 // URL absoluta para que funcione igual desde GitHub Pages, Netlify o en local.
-const PROXY_URL='https://hostal-matildas.netlify.app/api/anthropic';
+const PROXY_URL='https://gestorhostal-proxy.netlify.app/api/anthropic';
 async function anthropicRequest(payload){
   const r=await fetch(PROXY_URL,{
     method:'POST',
