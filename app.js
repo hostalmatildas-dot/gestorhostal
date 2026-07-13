@@ -1823,18 +1823,25 @@ async function syncToFirebase(){
 })();
 
 // ── Limpieza de datos inventados (regla de la casa: sin documento no se carga nada) ──
-// 1) La curva de Luz abr–dic del seed antiguo era una ESTIMACIÓN, no facturas. Se vacía,
-//    pero solo si el valor aún coincide con la estimación antigua — un importe real
-//    cargado después con ticket no coincide y se conserva.
-// 2) Entradas con tipo 'f' en GASTOS_VAR: bug del pill "Fijo recurrente" (anterior al
+// 1) Luz ene–jun son datos REALES (carpeta de facturas, usados en la declaración —
+//    confirmado por Glenda 13-jul-2026): si una limpieza anterior los vació, se restauran.
+//    Un importe distinto cargado con ticket (>0) se respeta siempre.
+// 2) Luz jul–dic del seed antiguo era una ESTIMACIÓN, no facturas. Se vacía, pero solo
+//    si el valor aún coincide con la estimación antigua — un importe real no coincide
+//    y se conserva.
+// 3) Entradas con tipo 'f' en GASTOS_VAR: bug del pill "Fijo recurrente" (anterior al
 //    13-jul-2026) — duplicaban el gasto (tabla de fijos + variables). Se retiran.
 // Idempotente: corre al arrancar y tras cada bajada de sync; al escribir, el hook de
 // setItem sube la versión limpia a Firebase y así se limpian también los demás dispositivos.
 function cleanupInventedData(){
-  const oldLuz={4:300,5:280,6:260,7:320,8:380,9:300,10:260,11:300,12:420};
   const luz=GASTOS_FIJOS.find(g=>g.id==='gf06');
   let fjChanged=false;
-  if(luz)Object.entries(oldLuz).forEach(([m,v])=>{if(Math.abs((luz.m[m]||0)-v)<0.01){luz.m[m]=0;fjChanged=true;}});
+  if(luz){
+    const realHastaJun={4:300,5:280,6:260};
+    Object.entries(realHastaJun).forEach(([m,v])=>{if(!(luz.m[m]>0)){luz.m[m]=v;fjChanged=true;}});
+    const estimacionVieja={7:320,8:380,9:300,10:260,11:300,12:420};
+    Object.entries(estimacionVieja).forEach(([m,v])=>{if(Math.abs((luz.m[m]||0)-v)<0.01){luz.m[m]=0;fjChanged=true;}});
+  }
   if(fjChanged)saveGastosFijos();
   const clean=GASTOS_VAR.filter(g=>g.tipo!=='f');
   if(clean.length!==GASTOS_VAR.length){
