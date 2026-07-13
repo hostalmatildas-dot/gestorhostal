@@ -1,6 +1,10 @@
 # Inventario privado de cuentas/plataformas — no subir al repo
 INVENTARIO_PLATAFORMAS.csv
 
+# Memoria de estado del proyecto (hook recordar_memoria_global.sh) — contiene
+# detalles de la declaración y el repo se publica entero en GitHub Pages
+memory/
+
 # Config local de Netlify
 .netlify/
 .DS_Store
