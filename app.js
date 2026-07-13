@@ -798,6 +798,26 @@ function saveGasto(){
   const privado=document.getElementById('g-privado').checked;
   const desde=document.getElementById('g-desde')?.value||'2026-01';
   const hasta=document.getElementById('g-hasta')?.value||'2026-12';
+  // Fijo recurrente (solo al crear): el importe real del ticket actualiza el gasto fijo elegido
+  // en el mes de la fecha — NO se crea una entrada en variables (evita contar el gasto dos veces).
+  if(_gTipo==='f'&&!_editId){
+    if(!fecha||isNaN(importe)){alert('Rellena fecha e importe');return;}
+    const fid=document.getElementById('g-fijo-sel')?.value;
+    if(!fid){alert('Elige qué gasto fijo estás actualizando');return;}
+    const gf=GASTOS_FIJOS.find(x=>x.id===fid);
+    if(!gf){alert('Gasto fijo no encontrado');return;}
+    const mes=new Date(fecha).getMonth()+1;
+    gf.m[mes]=importe;
+    if(_fotoData){gf.fotoM=gf.fotoM||{};gf.fotoM[mes]=_fotoData;}
+    saveGastosFijos();
+    closeModals();
+    if(document.getElementById('page-gastos').classList.contains('on'))renderGastos();
+    renderDashboard();
+    const mesNombre=new Date(fecha).toLocaleDateString('es-ES',{month:'long'});
+    notif(`${gf.n} actualizado: ${importe.toFixed(2)}€ en ${mesNombre}`);
+    _editId=null;_fotoData=null;
+    return;
+  }
   if(!fecha||isNaN(importe)||!concepto){alert('Rellena todos los campos');return;}
   const base={id:_editId||'v'+Date.now(),n:concepto,cat,fecha,importe,metodo:_gMet,tipo:_gTipo,privado,foto:_fotoData||null,recur:_recur};
   if(_editId){
@@ -1106,6 +1126,12 @@ function openGastoModal(){
   document.querySelector('#rpills .rpill[data-r="none"]')?.classList.add('on');
   _recur='none';
   document.getElementById('g-range-wrap').style.display='none';
+  // Reset tipo a Variable (y ocultar el selector de gasto fijo)
+  _gTipo='v';
+  document.querySelectorAll('#mbg-gasto .tipo-pills .tipo-pill').forEach(p=>p.classList.remove('on'));
+  document.querySelector('#mbg-gasto .tipo-pills .tipo-pill.v')?.classList.add('on');
+  const fw=document.getElementById('g-fijo-wrap');if(fw)fw.style.display='none';
+  const rw=document.getElementById('g-recur-wrap');if(rw)rw.style.display='block';
   document.querySelector('#mbg-gasto .modal-title').textContent='Añadir gasto';
   document.getElementById('mbg-gasto').classList.add('open');
 }
@@ -1184,8 +1210,36 @@ function showFoto(id){
   w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${g.foto}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
 }
 
+function showFotoFijo(id,m){
+  const g=GASTOS_FIJOS.find(x=>x.id===id);
+  if(!g||!g.fotoM||!g.fotoM[m])return;
+  const w=window.open('','_blank','width=600,height=400');
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${g.fotoM[m]}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+}
 
-function setTipo(t,btn){_gTipo=t;document.querySelectorAll('.tipo-pill').forEach(p=>{p.classList.remove('on');});btn.classList.add('on');}
+
+function setTipo(t,btn){
+  _gTipo=t;
+  document.querySelectorAll('.tipo-pill').forEach(p=>{p.classList.remove('on');});
+  btn.classList.add('on');
+  // Fijo recurrente: se elige QUÉ gasto fijo se actualiza (el importe va a su mes, no a variables).
+  // La recurrencia no aplica — la fila de gastos fijos ya cubre todos los meses.
+  const fw=document.getElementById('g-fijo-wrap'), rw=document.getElementById('g-recur-wrap');
+  if(fw){fw.style.display=(t==='f')?'block':'none'; if(t==='f')fillFijoSel();}
+  if(rw)rw.style.display=(t==='f')?'none':'block';
+  if(t==='f'){
+    _recur='none';
+    document.querySelectorAll('#rpills .rpill').forEach(p=>p.classList.remove('on'));
+    document.querySelector('#rpills .rpill[data-r="none"]')?.classList.add('on');
+  }
+}
+function fillFijoSel(){
+  const sel=document.getElementById('g-fijo-sel');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Elige el gasto fijo —</option>'+visibleGastosFijos().map(g=>`<option value="${g.id}">${g.n}</option>`).join('');
+  if(cur&&GASTOS_FIJOS.some(g=>g.id===cur))sel.value=cur;
+}
 function setCanal(c,btn){_canal=c;document.querySelectorAll('#mbg-ing .tipo-pill').forEach(p=>p.classList.remove('on'));btn.classList.add('on');}
 function calcCom(){const b=parseFloat(document.getElementById('i-bruto').value)||0;const pct=_canal==='booking'?0.15:_canal==='airbnb'?0.03:0;const com=(b*pct).toFixed(2);document.getElementById('i-com').value=com;document.getElementById('i-neto').value=(b-com).toFixed(2);}
 function calcNeto(){const b=parseFloat(document.getElementById('i-bruto').value)||0;const c=parseFloat(document.getElementById('i-com').value)||0;document.getElementById('i-neto').value=(b-c).toFixed(2);}
@@ -1228,7 +1282,7 @@ function renderInforme(){
   h+=`<tr class="tot"><td style="padding-left:12px;font-size:10px">↳ comisiones OTA</td>${Q1m.map(m=>`<td class="neg dim">${Math.abs(comTotal([m]))?fn(Math.abs(comTotal([m]))):''}</td>`).join('')}<td class="neg">${cA?fn(cA):''}</td></tr>`;
   h+=`<tr class="tot" style="background:var(--green-bg)"><td style="color:var(--green)">INGRESOS NETOS</td>${Q1m.map(m=>`<td class="pos">${fn0(ingTotal([m],'neto'))}</td>`).join('')}<td class="pos">${fn0(inT)}</td></tr>`;
   h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS FIJOS</td></tr>`;
-  visibleGastosFijos().forEach(g=>{const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);h+=`<tr><td>${g.n}</td>${Q1m.map(m=>`<td class="${g.m[m]?'neg':''}">${g.m[m]?fn(g.m[m]):''}</td>`).join('')}<td class="neg">${tot?fn(tot):''}</td></tr>`;});
+  visibleGastosFijos().forEach(g=>{const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);h+=`<tr><td>${g.n}</td>${Q1m.map(m=>`<td class="${g.m[m]?'neg':''}">${g.m[m]?fn(g.m[m]):''}${g.fotoM&&g.fotoM[m]?` <span style="font-size:9px;cursor:pointer;color:var(--gold)" onclick="showFotoFijo('${g.id}',${m})" title="Ver justificante">📷</span>`:''}</td>`).join('')}<td class="neg">${tot?fn(tot):''}</td></tr>`;});
   const gfT=gFijo(Q1m);  // uses visibleGastosFijos() internally
   h+=`<tr class="tot"><td>SUBTOTAL GASTOS FIJOS</td>${Q1m.map(m=>`<td class="neg">${fn(gFijo([m]))}</td>`).join('')}<td class="neg">${fn(gfT)}</td></tr>`;
   h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS VARIABLES</td></tr>`;

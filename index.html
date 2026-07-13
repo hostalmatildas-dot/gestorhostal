@@ -244,6 +244,11 @@
         <button type="button" class="tipo-pill f" onclick="setTipo('f',this)">Fijo recurrente</button>
       </div>
     </div>
+    <div class="fg" id="g-fijo-wrap" style="display:none">
+      <label class="fl">Gasto fijo a actualizar</label>
+      <select class="fs" id="g-fijo-sel"></select>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">El importe se guardará en ese gasto fijo, en el mes de la fecha del ticket (sustituye el valor que hubiera).</div>
+    </div>
     <div class="fr2">
       <div class="fg"><label class="fl">Fecha</label><input type="date" class="fi" id="g-fecha"></div>
       <div class="fg"><label class="fl">Importe (€)</label><input type="number" class="fi" id="g-imp" placeholder="0.00" step="0.01"></div>
