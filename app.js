@@ -1823,9 +1823,10 @@ async function syncToFirebase(){
 })();
 
 // ── Limpieza de datos inventados (regla de la casa: sin documento no se carga nada) ──
-// 1) Luz ene–jun son datos REALES (carpeta de facturas, usados en la declaración —
-//    confirmado por Glenda 13-jul-2026): si una limpieza anterior los vació, se restauran.
-//    Un importe distinto cargado con ticket (>0) se respeta siempre.
+// 1) Luz mar–jun: importes leídos de las facturas Reazziona el 14-jul-2026 (la gestora
+//    detectó que los 300/280/260 de abr–jun eran la estimación vieja, no facturas).
+//    Si el valor guardado está vacío o aún es el erróneo anterior (348/300/280/260),
+//    se pone el de la factura. Un importe distinto cargado con ticket (>0) se respeta.
 // 2) Luz jul–dic del seed antiguo era una ESTIMACIÓN, no facturas. Se vacía, pero solo
 //    si el valor aún coincide con la estimación antigua — un importe real no coincide
 //    y se conserva.
@@ -1837,8 +1838,14 @@ function cleanupInventedData(){
   const luz=GASTOS_FIJOS.find(g=>g.id==='gf06');
   let fjChanged=false;
   if(luz){
-    const realHastaJun={4:300,5:280,6:260};
-    Object.entries(realHastaJun).forEach(([m,v])=>{if(!(luz.m[m]>0)){luz.m[m]=v;fjChanged=true;}});
+    const facturado={3:348.81,4:164.26,5:176.90,6:126.74};
+    const erroneoAnterior={3:348,4:300,5:280,6:260};
+    Object.entries(facturado).forEach(([m,v])=>{
+      const actual=luz.m[m]||0;
+      if(!(actual>0)||Math.abs(actual-erroneoAnterior[m])<0.01){
+        if(Math.abs(actual-v)>=0.01){luz.m[m]=v;fjChanged=true;}
+      }
+    });
     const estimacionVieja={7:320,8:380,9:300,10:260,11:300,12:420};
     Object.entries(estimacionVieja).forEach(([m,v])=>{if(Math.abs((luz.m[m]||0)-v)<0.01){luz.m[m]=0;fjChanged=true;}});
   }
