@@ -1748,6 +1748,7 @@ async function initFirebase(){
       if(d.gv5){GASTOS_VAR=d.gv5;localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));}
       if(d.gf6){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));}
       _syncing=false;
+      cleanupInventedData();
     }
     renderDashboard();
     if(sd)sd.style.background='var(--green)';
@@ -1767,6 +1768,7 @@ async function initFirebase(){
         if(d.gv5&&JSON.stringify(d.gv5)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=d.gv5;localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));changed=true;}
         if(d.gf6&&JSON.stringify(d.gf6)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));changed=true;}
         _syncing=false;
+        cleanupInventedData();
         if(changed){
           ['dashboard','habitaciones','gastos','informe'].forEach(id=>{
             if(document.getElementById('page-'+id).classList.contains('on')){
@@ -1820,4 +1822,26 @@ async function syncToFirebase(){
   };
 })();
 
+// ── Limpieza de datos inventados (regla de la casa: sin documento no se carga nada) ──
+// 1) La curva de Luz abr–dic del seed antiguo era una ESTIMACIÓN, no facturas. Se vacía,
+//    pero solo si el valor aún coincide con la estimación antigua — un importe real
+//    cargado después con ticket no coincide y se conserva.
+// 2) Entradas con tipo 'f' en GASTOS_VAR: bug del pill "Fijo recurrente" (anterior al
+//    13-jul-2026) — duplicaban el gasto (tabla de fijos + variables). Se retiran.
+// Idempotente: corre al arrancar y tras cada bajada de sync; al escribir, el hook de
+// setItem sube la versión limpia a Firebase y así se limpian también los demás dispositivos.
+function cleanupInventedData(){
+  const oldLuz={4:300,5:280,6:260,7:320,8:380,9:300,10:260,11:300,12:420};
+  const luz=GASTOS_FIJOS.find(g=>g.id==='gf06');
+  let fjChanged=false;
+  if(luz)Object.entries(oldLuz).forEach(([m,v])=>{if(Math.abs((luz.m[m]||0)-v)<0.01){luz.m[m]=0;fjChanged=true;}});
+  if(fjChanged)saveGastosFijos();
+  const clean=GASTOS_VAR.filter(g=>g.tipo!=='f');
+  if(clean.length!==GASTOS_VAR.length){
+    GASTOS_VAR=clean;
+    localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));
+  }
+}
+
+cleanupInventedData();
 initFirebase();
