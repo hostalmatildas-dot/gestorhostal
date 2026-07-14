@@ -1849,6 +1849,11 @@ function cleanupInventedData(){
     const estimacionVieja={7:320,8:380,9:300,10:260,11:300,12:420};
     Object.entries(estimacionVieja).forEach(([m,v])=>{if(Math.abs((luz.m[m]||0)-v)<0.01){luz.m[m]=0;fjChanged=true;}});
   }
+  const innova=GASTOS_FIJOS.find(g=>g.id==='gf12');
+  if(innova){
+    // Club Innova de baja desde abril: un gf6 sincronizado viejo puede traer el 20 plano de todo el año
+    for(let mm=4;mm<=12;mm++){if(Math.abs((innova.m[mm]||0)-20)<0.01){innova.m[mm]=0;fjChanged=true;}}
+  }
   if(fjChanged)saveGastosFijos();
   const clean=GASTOS_VAR.filter(g=>g.tipo!=='f');
   if(clean.length!==GASTOS_VAR.length){
