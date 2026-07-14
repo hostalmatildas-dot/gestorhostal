@@ -1883,16 +1883,26 @@ function cleanupInventedData(){
   const luz=GASTOS_FIJOS.find(g=>g.id==='gf06');
   let fjChanged=false;
   if(luz){
-    const facturado={3:348.81,4:164.26,5:176.90,6:126.74};
-    const erroneoAnterior={3:348,4:300,5:280,6:260};
-    Object.entries(facturado).forEach(([m,v])=>{
+    // Migración a MES DE PAGO (criterio de caja, 14-jul-2026): si un gf6 sincronizado trae
+    // los valores del mapeo antiguo (por consumo: ene 553.82…jun 126.74), la estimación
+    // inventada (mar 348 / 300 / 280 / 260 / jul 320) o un 0, se recoloca al mes de pago.
+    // Un importe distinto (cargado con ticket por la usuaria) se respeta.
+    const eq=(a,b)=>Math.abs((a||0)-b)<0.01;
+    const mapa={
+      1:{nuevo:0,    viejos:[553.82]},
+      2:{nuevo:553.82,viejos:[483.88,0]},
+      3:{nuevo:483.88,viejos:[348.81,348,0]},
+      4:{nuevo:348.81,viejos:[164.26,300,0]},
+      5:{nuevo:164.26,viejos:[176.90,280,0]},
+      6:{nuevo:176.90,viejos:[126.74,260,0]},
+      7:{nuevo:126.74,viejos:[320,0]},
+    };
+    Object.entries(mapa).forEach(([m,d])=>{
       const actual=luz.m[m]||0;
-      if(!(actual>0)||Math.abs(actual-erroneoAnterior[m])<0.01){
-        if(Math.abs(actual-v)>=0.01){luz.m[m]=v;fjChanged=true;}
-      }
+      if(d.viejos.some(v=>eq(actual,v))&&!eq(actual,d.nuevo)){luz.m[m]=d.nuevo;fjChanged=true;}
     });
-    const estimacionVieja={7:320,8:380,9:300,10:260,11:300,12:420};
-    Object.entries(estimacionVieja).forEach(([m,v])=>{if(Math.abs((luz.m[m]||0)-v)<0.01){luz.m[m]=0;fjChanged=true;}});
+    const estimacionVieja={8:380,9:300,10:260,11:300,12:420};
+    Object.entries(estimacionVieja).forEach(([m,v])=>{if(eq(luz.m[m],v)){luz.m[m]=0;fjChanged=true;}});
   }
   const innova=GASTOS_FIJOS.find(g=>g.id==='gf12');
   if(innova){

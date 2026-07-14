@@ -91,16 +91,19 @@ const GASTOS_FIJOS_DEFAULT=[
   {id:'gf03',n:'Comunidad',              cat:'inmueble',    sys:true, m:{1:17.98,2:17.98,3:17.98,4:17.98,5:17.98,6:17.98,7:17.98,8:17.98,9:17.98,10:17.98,11:17.98,12:17.98}},
   {id:'gf04',n:'Seguro',                 cat:'inmueble',    sys:true, m:{1:0,2:443.63,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0,11:0,12:0}},
   {id:'gf05',n:'IBI Anual',              cat:'fiscal',      sys:true, m:{1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:620.76,10:0,11:0,12:0}},
-  // Luz: ene–jun REALES, leídos de las facturas Reazziona (14-jul-2026; la gestora detectó
-  // que los 300/280/260 anteriores eran la estimación vieja). Por MES DE CONSUMO — ojo:
-  // la gestora las nombra por fecha de emisión, un mes después.
-  //   mar 348.81  BAR-SCV-2026/003698 (02/03–31/03, emitida 07/04)
-  //   abr 164.26  BAR-SCV-2026/006205 (31/03–30/04, emitida 05/05)
-  //   may 176.90  BAR-SCV-2026/010534 (30/04–31/05, emitida 05/06)
-  //   jun 126.74  BAR-SCV-2026/014899 (31/05–30/06, emitida 03/07 → fiscalmente T3)
-  // Jul en adelante SIN valor: cada mes se carga con su factura real
+  // Luz: importes REALES de las facturas Reazziona, por MES DE PAGO (criterio de caja de
+  // Glenda, 14-jul-2026: el gasto cuenta cuando se paga — igual que archiva la gestora).
+  // Reazziona emite ~5 días después de cerrar el mes de consumo:
+  //   feb 553.82  consumo ene
+  //   mar 483.88  consumo feb
+  //   abr 348.81  consumo mar  BAR-SCV-2026/003698 (emitida 07/04)
+  //   may 164.26  consumo abr  BAR-SCV-2026/006205 (emitida 05/05)
+  //   jun 176.90  consumo may  BAR-SCV-2026/010534 (emitida 05/06)
+  //   jul 126.74  consumo jun  BAR-SCV-2026/014899 (emitida 03/07 → T3)
+  // ENE a 0: la factura del consumo de dic-2025 (pagada en enero) está pendiente de
+  // descargar de Reazziona. Ago en adelante SIN valor: cada mes con su factura real
   // (foto del ticket + pill "Fijo recurrente"). NUNCA estimar.
-  {id:'gf06',n:'Luz (Octopus/Reazziona)',cat:'suministros', sys:true, m:{1:553.82,2:483.88,3:348.81,4:164.26,5:176.90,6:126.74,7:0,8:0,9:0,10:0,11:0,12:0}},
+  {id:'gf06',n:'Luz (Octopus/Reazziona)',cat:'suministros', sys:true, m:{1:0,2:553.82,3:483.88,4:348.81,5:164.26,6:176.90,7:126.74,8:0,9:0,10:0,11:0,12:0}},
   {id:'gf07',n:'WiFi (Simyo/Digi)',      cat:'suministros', sys:true, m:{1:27.99,2:27.99,3:12,4:12,5:12,6:12,7:12,8:12,9:12,10:12,11:12,12:12}},
   {id:'gf08',n:'IMOU (cámaras)',         cat:'tecnologia',  sys:true, m:{1:3.49,2:3.49,3:3.49,4:3.49,5:3.49,6:3.49,7:3.49,8:3.49,9:3.49,10:3.49,11:3.49,12:3.49}},
   {id:'gf09',n:'ProtonVPN',              cat:'tecnologia',  sys:true, m:{1:9.99,2:9.99,3:9.99,4:9.99,5:9.99,6:9.99,7:9.99,8:9.99,9:9.99,10:9.99,11:9.99,12:9.99}},
