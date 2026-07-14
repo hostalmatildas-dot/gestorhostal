@@ -84,7 +84,7 @@ let pmsLastSync = null;
 const PMS_URL = 'https://web-production-10bda.up.railway.app';
 
 // GASTOS FIJOS — 12 meses
-// Comunidad sólo en GF (eliminada de GV), luz en GF, Club Innova mensual, Claude en GF
+// Comunidad sólo en GF (eliminada de GV), luz en GF, Claude en GF
 const GASTOS_FIJOS_DEFAULT=[
   {id:'gf01',n:'Autónomos',              cat:'fiscal',      sys:true, m:{1:301.63,2:301.63,3:301.63,4:301.63,5:301.63,6:301.63,7:301.63,8:301.63,9:301.63,10:301.63,11:301.63,12:301.63}},
   {id:'gf02',n:'Hipoteca',               cat:'financiero',  sys:true, m:{1:376.58,2:376.58,3:376.58,4:376.58,5:376.58,6:376.58,7:376.58,8:376.58,9:376.58,10:376.58,11:376.58,12:376.58}},
@@ -106,7 +106,6 @@ const GASTOS_FIJOS_DEFAULT=[
   {id:'gf09',n:'ProtonVPN',              cat:'tecnologia',  sys:true, m:{1:9.99,2:9.99,3:9.99,4:9.99,5:9.99,6:9.99,7:9.99,8:9.99,9:9.99,10:9.99,11:9.99,12:9.99}},
   {id:'gf10',n:'ChatGPT',                cat:'tecnologia',  sys:true, m:{1:20,2:20,3:20,4:20,5:20,6:20,7:20,8:20,9:20,10:20,11:20,12:20}},
   {id:'gf11',n:'ONE&ONE (hosting)',      cat:'tecnologia',  sys:true, m:{1:1.21,2:1.21,3:1.21,4:1.21,5:1.21,6:1.21,7:1.21,8:1.21,9:1.21,10:1.21,11:1.21,12:1.21}},
-  {id:'gf12',n:'Club Innova IA',         cat:'tecnologia',  sys:true, m:{1:20,2:20,3:20,4:20,5:20,6:20,7:20,8:20,9:20,10:20,11:20,12:20}},
   {id:'gf13',n:'Claude Pro (anual/12)',  cat:'tecnologia',  sys:true, m:{1:15,2:15,3:15,4:15,5:15,6:15,7:15,8:15,9:15,10:15,11:15,12:15}},
 ];
 // Merge system defaults with user-added/edited fijos from localStorage
