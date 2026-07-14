@@ -96,6 +96,7 @@
     <button class="ing-btn" onclick="openIngModal()">+ Añadir ingreso</button>
   </div>
   <div class="kpis" id="kpis"></div>
+  <div id="dash-pendientes"></div>
   <div class="balance-row" id="bal-cards"></div>
   <div class="card">
     <div class="card-title" id="exc-title">Vista global</div>
@@ -213,6 +214,7 @@
       <button class="exp-btn" onclick="document.getElementById('backup-file').click()" title="Restaurar los datos desde una copia descargada">↩ Restaurar</button>
       <input type="file" id="backup-file" accept=".json,application/json" style="display:none" onchange="backupImport(this)">
     </div>
+    <div id="inf-pendientes"></div>
     <div class="tscroll"><table class="inf-tbl" id="inf-tbl"></table></div>
   </div>
 </div>
@@ -387,6 +389,9 @@
       <div class="fg"><label class="fl">Fecha entrada</label><input type="date" class="fi" id="i-ci"></div>
       <div class="fg"><label class="fl">Fecha salida</label><input type="date" class="fi" id="i-co"></div>
     </div>
+    </div>
+    <div class="fg"><label class="fl">Fecha de cobro (cuándo llegó el dinero)</label><input type="date" class="fi" id="i-fc">
+      <div style="font-size:10px;color:var(--text3);margin-top:3px">El ingreso cuenta en el mes del cobro. Si se deja vacío (reservas desde jul 2026), queda ⏳ pendiente de cobro y NO suma como ingreso hasta ponerla.</div>
     </div>
     <div class="fr2">
       <div class="fg"><label class="fl">Precio bruto (€)</label><input type="number" class="fi" id="i-bruto" placeholder="0.00" step="0.01" oninput="calcCom()"></div>

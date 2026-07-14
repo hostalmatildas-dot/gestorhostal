@@ -36,10 +36,20 @@ function setMode(isReal){
 function fn(n){if(!n&&n!==0)return'—';if(n===0)return'—';return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+'€';}
 function fn0(n){return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)+'€';}
 function pdate(s){return new Date(s+'T00:00:00');}
-function getMes(r){return pdate(r.ci).getMonth()+1;}
+// Mes del ingreso: si hay fecha de cobro (r.fc) manda ella — criterio de caja; si no, la entrada
+function getMes(r){return pdate(r.fc||r.ci).getMonth()+1;}
 
 // Filter reservas by mode: fiscal = only non-private, real = all
 function visibleReservas(){ return IS_REAL ? RESERVAS : RESERVAS.filter(r=>!r.privado); }
+
+// Criterio de caja (decisión de Glenda, jul-2026): lo cobrado en julio es de julio.
+// Desde el T3 2026 una reserva SOLO cuenta como ingreso cuando tiene fecha de cobro (r.fc);
+// sin fc queda "pendiente de cobro" (visible pero fuera de ingresos). Las reservas con
+// salida anterior al 1/7 se mantienen como hasta ahora (por mes de estancia).
+const CAJA_DESDE='2026-07-01';
+function esPendienteCobro(r){return !r.fc&&(r.co||r.ci)>=CAJA_DESDE;}
+function reservasCobradas(){ return visibleReservas().filter(r=>!esPendienteCobro(r)); }
+function pendientesCobro(){ return visibleReservas().filter(esPendienteCobro); }
 // Filter gastos_var by mode
 function visibleGastosVar(){ return IS_REAL ? GASTOS_VAR : GASTOS_VAR.filter(g=>!g.privado); }
 // Gastos fijos: all fijos are always fiscal (they're declared by default)
@@ -47,9 +57,9 @@ function visibleGastosVar(){ return IS_REAL ? GASTOS_VAR : GASTOS_VAR.filter(g=>
 function visibleGastosFijos(){ return IS_REAL ? GASTOS_FIJOS : GASTOS_FIJOS.filter(g=>!g.privado); }
 
 function _ma(mes){if(mes==='year')return[1,2,3,4,5,6,7,8,9,10,11,12];if(Array.isArray(mes))return mes;return[mes];}
-function ingTotal(mes,field='neto'){const a=_ma(mes);return visibleReservas().filter(r=>a.includes(getMes(r))).reduce((s,r)=>s+(r[field]||0),0);}
-function ingByRoom(room,mes,field='neto'){const a=_ma(mes);return visibleReservas().filter(r=>r.room===room&&a.includes(getMes(r))).reduce((s,r)=>s+(r[field]||0),0);}
-function comTotal(mes){const a=_ma(mes);return visibleReservas().filter(r=>a.includes(getMes(r))).reduce((s,r)=>s+(r.com||0),0);}
+function ingTotal(mes,field='neto'){const a=_ma(mes);return reservasCobradas().filter(r=>a.includes(getMes(r))).reduce((s,r)=>s+(r[field]||0),0);}
+function ingByRoom(room,mes,field='neto'){const a=_ma(mes);return reservasCobradas().filter(r=>r.room===room&&a.includes(getMes(r))).reduce((s,r)=>s+(r[field]||0),0);}
+function comTotal(mes){const a=_ma(mes);return reservasCobradas().filter(r=>a.includes(getMes(r))).reduce((s,r)=>s+(r.com||0),0);}
 function gFijo(mes){const a=_ma(mes);return visibleGastosFijos().reduce((s,g)=>s+a.reduce((x,m)=>x+(g.m[m]||0),0),0);}
 function gVar(mes){const a=_ma(mes);return visibleGastosVar().filter(g=>a.includes(new Date(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);}
 function gTot(mes){return gFijo(mes)+gVar(mes);}
@@ -189,6 +199,7 @@ function renderDashboard(){
   const pd=PERIOD_DEFS[curP];
   const mes=pd.mes, mL=pd.label;
   document.getElementById('exc-title').textContent='Vista global · '+mL;
+  renderPendBox('dash-pendientes');
   const ing=ingTotal(mes,'bruto'),com=Math.abs(comTotal(mes)),nto=ingTotal(mes,'neto'),gast=gTot(mes),res=nto-gast,ocu=occPct(mes);
   document.getElementById('kpis').innerHTML=`
     <div class="kpi g"><div class="kpi-lbl">Ingresos brutos</div><div class="kpi-val green">${fn0(ing)}</div><div class="kpi-sub">${mL}</div></div>
@@ -247,12 +258,12 @@ function renderExcTable(pKey){
     const vals=cols.map(c=>ingByRoom(room,[c],'bruto'));
     const tot=vals.reduce((a,b)=>a+b,0);
     tb+=`<tr><td class="L stk">${ROOM_NAME[room]}</td>${vals.map(v=>`<td class="${v?'pos':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct pos">${tot?fn(tot):''}</td>`:''}</tr>`;
-    const comV=cols.map(c=>Math.abs(visibleReservas().filter(r=>r.room===room&&getMes(r)===c).reduce((s,r)=>s+(r.com||0),0)));
+    const comV=cols.map(c=>Math.abs(reservasCobradas().filter(r=>r.room===room&&getMes(r)===c).reduce((s,r)=>s+(r.com||0),0)));
     const comT=comV.reduce((a,b)=>a+b,0);
     if(comT>0){tb+=`<tr class="sub"><td class="L stk">↳ comisión OTA</td>${comV.map(v=>`<td class="com">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct com">${fn(comT)}</td>`:''}</tr>`;}
   });
   // Reservas-resumen sin habitación concreta (p.ej. informe trimestral Airbnb T2)
-  const resR=visibleReservas().filter(r=>!ROOMS.includes(r.room));
+  const resR=reservasCobradas().filter(r=>!ROOMS.includes(r.room));
   [...new Set(resR.map(r=>r.room))].forEach(rm=>{
     const grp=resR.filter(r=>r.room===rm);
     const vals=cols.map(c=>grp.filter(r=>getMes(r)===c).reduce((s,r)=>s+(r.bruto||0),0));
@@ -425,12 +436,13 @@ function renderHabs(){
       ${rr.map(r=>{
         const isExtra=RESERVAS_EXTRA.some(x=>x.id===r.id);
         const privBadge=r.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">priv.</span>`:'';
+        const pendBadge=esPendienteCobro(r)?` <span title="Pendiente de cobro — no cuenta como ingreso hasta poner fecha de cobro" style="font-size:10px">⏳</span>`:'';
         const actions=isExtra
           ?`<td style="white-space:nowrap"><button onclick="editIngreso('${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 3px" title="Editar">✎</button><button onclick="delIngreso('${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 3px" title="Eliminar">×</button></td>`
           :`<td style="font-size:9px;color:var(--text3);text-align:center">OTA</td>`;
         const st=reconcileStatus(r);
         const pmsCell=hasPMS?(st?`<td style="text-align:center;font-size:13px" title="${st.msg}">${st.icon}</td>`:'<td></td>'):'';
-        return`<tr><td>${r.guest}${privBadge}</td><td><span class="badge ${r.canal}">${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td>${r.ci}</td><td>${r.co}</td><td style="color:var(--green)">${fn0(r.bruto)}</td><td style="color:var(--red)">${r.com?fn(r.com):'—'}</td><td style="color:var(--green)">${fn0(r.neto)}</td>${pmsCell}${actions}</tr>`;
+        return`<tr><td>${r.guest}${privBadge}${pendBadge}</td><td><span class="badge ${r.canal}">${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td>${r.ci}</td><td>${r.co}</td><td style="color:var(--green)">${fn0(r.bruto)}</td><td style="color:var(--red)">${r.com?fn(r.com):'—'}</td><td style="color:var(--green)">${fn0(r.neto)}</td>${pmsCell}${actions}</tr>`;
       }).join('')}
       ${pmsSinRegistrar.map(p=>`<tr style="background:rgba(200,168,74,.06)"><td style="color:var(--gold)">${p.guest} <span style="font-size:9px;opacity:.7">·PMS</span></td><td><span class="badge ${p.canal}">${p.canal==='booking'?'Booking':p.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td style="color:var(--gold)">${p.ci}</td><td style="color:var(--gold)">${p.co}</td><td style="color:var(--gold)">${p.bruto?fn0(p.bruto):'—'}</td><td>—</td><td>—</td>${hasPMS?'<td style="text-align:center;font-size:11px;color:var(--gold)" title="En PMS pero sin registrar en contabilidad">🟡</td>':''}<td style="font-size:9px;color:var(--gold);text-align:center">Sin reg.</td></tr>`).join('')}
     </tbody></table></div>`:`<div style="padding:10px 14px;font-size:11px;color:var(--text3);font-style:italic">Sin reservas registradas en ${mL}</div>`;
@@ -879,6 +891,7 @@ function editIngreso(id){
   _editIngId=id;
   document.getElementById('i-ci').value=r.ci;
   document.getElementById('i-co').value=r.co;
+  const fcEd=document.getElementById('i-fc');if(fcEd)fcEd.value=r.fc||'';
   document.getElementById('i-room').value=r.room;
   document.getElementById('i-guest').value=r.guest;
   document.getElementById('i-bruto').value=r.bruto;
@@ -931,7 +944,8 @@ function saveIngreso(){
     const ci=document.getElementById('i-ci').value;
     const co=document.getElementById('i-co').value;
     if(!ci||!co){alert('Indica las fechas de entrada y salida');return;}
-    const r={id:_editIngId||'e'+Date.now(),room,guest,ci,co,canal:_canal,bruto,com,neto,metodo:_iMet,privado};
+    const fc=(document.getElementById('i-fc')||{}).value||undefined;
+    const r={id:_editIngId||'e'+Date.now(),room,guest,ci,co,fc,canal:_canal,bruto,com,neto,metodo:_iMet,privado};
     if(_editIngId){
       const idx=RESERVAS_EXTRA.findIndex(x=>x.id===_editIngId);
       if(idx>-1)RESERVAS_EXTRA[idx]=r; else RESERVAS_EXTRA.push(r);
@@ -1005,7 +1019,7 @@ async function fileToReservasPayload(file){
 
 // IA (Haiku): devuelve un array de reservas normalizadas desde el contenido del archivo
 async function aiExtractReservas(payload){
-  const instr='Extrae TODAS las reservas de este documento (Booking, Airbnb o reservas directas). Responde SOLO un JSON array, sin markdown. Cada elemento:\n{"guest":"nombre huésped","ci":"YYYY-MM-DD","co":"YYYY-MM-DD","canal":"booking|airbnb|directo","bruto":0.00,"com":0.00,"neto":0.00}\nci=entrada/check-in, co=salida/check-out. bruto=importe total antes de comisión. com=comisión (número positivo). neto=lo que recibe el hostal. Usa null si un dato no aparece. Deduce el canal según el origen del documento. Si no hay reservas, responde [].';
+  const instr='Extrae TODAS las reservas de este documento (Booking, Airbnb o reservas directas). Responde SOLO un JSON array, sin markdown. Cada elemento:\n{"guest":"nombre huésped","ci":"YYYY-MM-DD","co":"YYYY-MM-DD","fc":"YYYY-MM-DD o null","canal":"booking|airbnb|directo","bruto":0.00,"com":0.00,"neto":0.00}\nci=entrada/check-in, co=salida/check-out. fc=fecha de COBRO: solo si el documento indica cuándo se pagó (p.ej. "Fecha de emisión del pago" en los resúmenes de pago de Booking); si el documento es un listado de reservas sin fechas de pago, fc=null. bruto=importe total antes de comisión. com=comisión (número positivo). neto=lo que recibe el hostal. Usa null si un dato no aparece. Deduce el canal según el origen del documento. Si no hay reservas, responde [].';
   const content = payload.kind==='image'
     ? [{type:'image',source:{type:'base64',media_type:'image/jpeg',data:payload.dataUrl.split(',')[1]}},{type:'text',text:instr}]
     : [{type:'text',text:'Contenido del archivo:\n'+String(payload.text||'').slice(0,14000)},{type:'text',text:instr}];
@@ -1056,7 +1070,7 @@ async function importReconFiles(inp){
         const bruto=parseFloat(x.bruto)||0;
         const com=x.com!=null?-Math.abs(parseFloat(x.com)||0):0;
         const neto=x.neto!=null&&x.neto!==''?parseFloat(x.neto):(bruto+com);
-        const f={guest:x.guest||'—',ci:x.ci||'',co:x.co||'',canal:_normCanal(x.canal),bruto,com,neto,src:file.name,incluir:true};
+        const f={guest:x.guest||'—',ci:x.ci||'',co:x.co||'',fc:x.fc||undefined,canal:_normCanal(x.canal),bruto,com,neto,src:file.name,incluir:true};
         f.recon=reconAgainstPMS(f);
         f.incluir=f.recon.icon!=='✅';
         _recon.push(f);
@@ -1095,18 +1109,25 @@ function renderReconTable(){
 function importSelectedRecon(){
   const sel=_recon.filter(f=>f.incluir&&f.bruto);
   if(!sel.length){notif('No hay reservas seleccionadas');return;}
-  let added=0;
+  let added=0,cobradas=0;
   sel.forEach(f=>{
-    const dup=RESERVAS.some(r=>r.ci===f.ci&&Math.abs((r.bruto||0)-f.bruto)<0.5&&_guestSim(r.guest,f.guest));
-    if(dup)return;
-    RESERVAS_EXTRA.push({id:'e'+Date.now()+Math.random().toString(36).slice(2),room:(f.recon.p&&f.recon.p.room)||'Sin asignar',guest:f.guest,ci:f.ci,co:f.co||f.ci,canal:f.canal,bruto:f.bruto,com:f.com,neto:f.neto,metodo:f.canal==='directo'?'Bizum/Transf':'OTA'});
+    const dup=RESERVAS.find(r=>r.ci===f.ci&&Math.abs((r.bruto||0)-f.bruto)<0.5&&_guestSim(r.guest,f.guest));
+    if(dup){
+      // Ya registrada: si el archivo trae fecha de cobro (PDF de pagos) y la reserva no la tenía, se marca cobrada
+      if(f.fc&&!dup.fc){dup.fc=f.fc;cobradas++;}
+      return;
+    }
+    RESERVAS_EXTRA.push({id:'e'+Date.now()+Math.random().toString(36).slice(2),room:(f.recon.p&&f.recon.p.room)||'Sin asignar',guest:f.guest,ci:f.ci,co:f.co||f.ci,fc:f.fc||undefined,canal:f.canal,bruto:f.bruto,com:f.com,neto:f.neto,metodo:f.canal==='directo'?'Bizum/Transf':'OTA'});
     added++;
   });
   RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
   localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
   closeModals();renderDashboard();
   if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
-  notif(added?`${added} reserva(s) importada(s)`:'Sin nuevas (ya estaban registradas)');
+  const parts=[];
+  if(added)parts.push(`${added} reserva(s) importada(s)`);
+  if(cobradas)parts.push(`${cobradas} marcada(s) como cobrada(s)`);
+  notif(parts.length?parts.join(' · '):'Sin nuevas (ya estaban registradas)');
 }
 
 function openGastoModal(){
@@ -1143,6 +1164,7 @@ function openIngModal(){
   const ci=document.getElementById('i-ci');
   if(ci)ci.value=new Date().toISOString().slice(0,10);
   const co=document.getElementById('i-co');if(co)co.value='';
+  const fcN=document.getElementById('i-fc');if(fcN)fcN.value='';
   document.getElementById('i-guest').value='';
   document.getElementById('i-bruto').value='';
   document.getElementById('i-com').value='';
@@ -1273,7 +1295,7 @@ function renderInforme(){
    {l:'  Comision Airbnb',c:'airbnb',f:'com',isCom:true},
    {l:'Directo (Bizum / Transf)',c:'directo',f:'neto'},
   ].forEach(r=>{
-    const ms=Q1m.map(m=>visibleReservas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));
+    const ms=Q1m.map(m=>reservasCobradas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));
     const tot=ms.reduce((a,b)=>a+b,0);
     h+=`<tr ${r.isCom?'style="opacity:.7"':''}><td ${r.isCom?'style="padding-left:14px;font-size:10px;color:var(--text3)"':''}>${r.l}</td>${ms.map(v=>`<td class="${r.isCom?'neg dim':v?'pos':''}">${v?fn(Math.abs(v)):''}</td>`).join('')}<td class="${r.isCom?'neg':tot?'pos':''}">${tot?fn(Math.abs(tot)):''}</td></tr>`;
   });
@@ -1294,6 +1316,21 @@ function renderInforme(){
   h+=`<tr class="tot"><td>TOTAL GASTOS</td>${Q1m.map(m=>`<td class="neg">${fn0(gTot([m]))}</td>`).join('')}<td class="neg">${fn0(gT)}</td></tr>`;
   h+=`<tr class="tot" style="background:rgba(200,168,74,.07)"><td style="font-family:'Playfair Display',serif;font-size:13px;color:var(--gold)">RESULTADO NETO</td>${Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return`<td class="${n>=0?'pos':'neg'}">${fn0(n)}</td>`;}).join('')}<td class="${res>=0?'gold':'neg'}" style="font-size:13px">${fn0(res)}</td></tr>`;
   h+=`</tbody>`;document.getElementById('inf-tbl').innerHTML=h;
+  renderPendBox('inf-pendientes');
+}
+
+// Caja "⏳ pendiente de cobro" (dashboard e informe): reservas sin fecha de cobro desde jul-2026
+function renderPendBox(elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const pend=pendientesCobro();
+  if(!pend.length){el.innerHTML='';return;}
+  const tot=pend.reduce((s,r)=>s+(r.bruto||0),0);
+  el.innerHTML=`<div style="margin:0 0 12px;padding:10px 14px;background:rgba(200,168,74,.08);border:1px solid var(--gold);border-radius:8px;font-size:12px">
+    <b style="color:var(--gold)">⏳ Pendiente de cobro — NO cuenta como ingreso:</b> ${pend.length} reserva${pend.length>1?'s':''} · <b>${fn0(tot)}</b>
+    <div style="margin-top:5px;font-size:11px;color:var(--text3)">${pend.map(r=>`${r.guest} (${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'} · ${r.ci}→${r.co||'?'} · ${fn0(r.bruto||0)})`).join(' · ')}</div>
+    <div style="margin-top:4px;font-size:10px;color:var(--text3)">Cuando llegue el dinero, edita la reserva y pon la <b>fecha de cobro</b>: contará como ingreso en el mes del cobro.</div>
+  </div>`;
 }
 
 function exportCSV(){
@@ -1305,7 +1342,9 @@ function exportCSV(){
   let csv=`\uFEFFConcepto,${Q1m.map(m=>MN[m]).join(',')},${q('Total '+mLabel)}\n--- INGRESOS ---${','.repeat(Q1m.length+1)}\n`;
   [{l:'Booking bruto',c:'booking',f:'bruto'},{l:'Comisión Booking',c:'booking',f:'com',abs:true},
    {l:'Airbnb bruto',c:'airbnb',f:'bruto'},{l:'Comisión Airbnb',c:'airbnb',f:'com',abs:true},{l:'Directo',c:'directo',f:'neto'}
-  ].forEach(r=>{const ms=Q1m.map(m=>visibleReservas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));const fn2=v=>r.abs?fv(Math.abs(v)):fv(v);csv+=`${r.l},${ms.map(fn2).join(',')},${fn2(ms.reduce((a,b)=>a+b,0))}\n`;});
+  ].forEach(r=>{const ms=Q1m.map(m=>reservasCobradas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));const fn2=v=>r.abs?fv(Math.abs(v)):fv(v);csv+=`${r.l},${ms.map(fn2).join(',')},${fn2(ms.reduce((a,b)=>a+b,0))}\n`;});
+  const pendC=pendientesCobro();
+  if(pendC.length)csv+=`${q('PENDIENTE DE COBRO (no incluido): '+pendC.map(r=>`${r.guest} ${r.ci} ${(r.bruto||0).toFixed(2)}`).join(' | '))}${','.repeat(Q1m.length+1)}\n`;
   csv+=`INGRESOS NETOS,${Q1m.map(m=>fv(ingTotal([m],'neto'))).join(',')},${fv(ingTotal(Q1m,'neto'))}\n--- GASTOS FIJOS ---,,,,\n`;
   visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${q(g.n)},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
   csv+=`--- GASTOS VARIABLES ---,,,,\n`;
@@ -1520,7 +1559,7 @@ async function exportPDF(){
       {l:'Directo (Bizum/Transf.)',c:'directo',f:'neto'},
     ];
     canales.forEach(r=>{
-      const vals=Q1m.map(m=>visibleReservas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));
+      const vals=Q1m.map(m=>reservasCobradas().filter(x=>getMes(x)===m&&x.canal===r.c).reduce((s,x)=>s+(x[r.f]||0),0));
       const tot=vals.reduce((a,b)=>a+b,0);
       if(tot)drawRow(r.l,vals.map(v=>Math.abs(v)||null),Math.abs(tot)||null,r.neg?[191,95,74]:null,r.indent);
     });
@@ -1530,6 +1569,12 @@ async function exportPDF(){
     drawRow('TOTAL INGRESOS BRUTOS',Q1m.map(m=>ingTotal([m],'bruto')),ibT,[90,158,114]);
     drawRow('  Comisiones OTA',Q1m.map(m=>Math.abs(comTotal([m]))||null),cA||null,[191,95,74],true);
     drawRow('INGRESOS NETOS',Q1m.map(m=>ingTotal([m],'neto')),inT,[90,158,114]);
+    const pendP=pendientesCobro();
+    if(pendP.length){
+      doc.setFontSize(6.5);doc.setTextColor(150,120,40);
+      doc.text(`Pendiente de cobro (NO incluido en ingresos): ${pendP.length} reserva(s) · ${pendP.reduce((s,r)=>s+(r.bruto||0),0).toFixed(2)} EUR — ${pendP.map(r=>`${r.guest} ${r.ci}`).join(' · ').slice(0,180)}`,M+2,y+3);
+      doc.setTextColor(0,0,0);y+=4;
+    }
     y+=2;
 
     // GASTOS FIJOS
