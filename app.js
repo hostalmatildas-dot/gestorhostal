@@ -1668,8 +1668,13 @@ async function exportPDF(){
     doc.rect(M,y,W-2*M,7,'F');
     drawRow('RESULTADO NETO',Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return n;}),res,res>=0?[90,158,114]:[191,95,74]);
 
-    // JUSTIFICANTES — new page with photos
-    const gastosFoto=visibleGastosVar().filter(g=>g.foto&&Q1m.includes(new Date(g.fecha).getMonth()+1));
+    // JUSTIFICANTES — new page with photos (variables + fijos, ordenados por mes)
+    const gastosFoto=[
+      ...visibleGastosVar().filter(g=>g.foto&&Q1m.includes(new Date(g.fecha).getMonth()+1))
+        .map(g=>({mes:new Date(g.fecha).getMonth()+1,n:g.n,fecha:g.fecha,importe:g.importe,foto:g.foto})),
+      ...visibleGastosFijos().flatMap(g=>Q1m.filter(m=>g.fotoM&&g.fotoM[m])
+        .map(m=>({mes:m,n:g.n+' (fijo)',fecha:MN[m]+' 2026',importe:g.m[m]||0,foto:g.fotoM[m]})))
+    ].sort((a,b)=>a.mes-b.mes);
     if(gastosFoto.length){
       doc.addPage();
       doc.setFillColor(13,13,11);
@@ -1713,6 +1718,68 @@ async function exportPDF(){
   }catch(e){
     console.error('PDF error:',e);
     notif('Error generando PDF: '+e.message);
+  }
+}
+
+// ═══════════ JUSTIFICANTES DEL TRIMESTRE (carpeta para la gestora) ═══════════
+// Baja en un ZIP todas las fotos guardadas del período — variables Y fijos — con
+// nombres listos para archivar: T3_julio_comunidad.jpg
+function _slugFile(s){
+  return (s||'gasto').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'gasto';
+}
+
+function justificantesPeriodo(){
+  const MN={1:'enero',2:'febrero',3:'marzo',4:'abril',5:'mayo',6:'junio',7:'julio',8:'agosto',9:'septiembre',10:'octubre',11:'noviembre',12:'diciembre'};
+  const Q1m=PERIOD_DEFS[infP].cols;
+  const tri=infP.replace('q','T').toUpperCase();
+  const out=[];
+  visibleGastosVar().forEach(g=>{
+    const m=new Date(g.fecha).getMonth()+1;
+    if(g.foto&&Q1m.includes(m))
+      out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_${g.fecha}.jpg`,data:g.foto});
+  });
+  visibleGastosFijos().forEach(g=>{
+    Q1m.forEach(m=>{
+      if(g.fotoM&&g.fotoM[m])
+        out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_fijo.jpg`,data:g.fotoM[m]});
+    });
+  });
+  return out.sort((a,b)=>a.mes-b.mes);
+}
+
+async function exportJustificantes(){
+  const items=justificantesPeriodo();
+  const tri=infP.replace('q','T').toUpperCase();
+  if(!items.length){notif('No hay fotos guardadas en '+tri,true);return;}
+  notif('Preparando '+items.length+' justificantes...');
+  try{
+    if(!window.JSZip){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload=res;s.onerror=()=>rej(new Error('sin conexión'));
+        document.head.appendChild(s);
+      });
+    }
+    const zip=new window.JSZip();
+    items.forEach(it=>{
+      const b64=(it.data||'').split(',')[1];
+      if(b64)zip.file(it.name,b64,{base64:true});
+    });
+    const blob=await zip.generateAsync({type:'blob'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`justificantes_${tri}_2026.zip`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    notif(items.length+' justificantes descargados ✓');
+  }catch(e){
+    // Sin ZIP (p. ej. sin conexión): se bajan de una en una
+    items.forEach((it,i)=>setTimeout(()=>{
+      const a=document.createElement('a');a.href=it.data;a.download=it.name;a.click();
+    },i*400));
+    notif('Descargando '+items.length+' fotos una a una');
   }
 }
 
