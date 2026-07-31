@@ -645,16 +645,55 @@ async function ocrDocument(imageDataUrl){
   if(!jsonMatch)throw new Error('No JSON: '+txt.slice(0,80));
   return JSON.parse(jsonMatch[0]);
 }
+// Las únicas categorías y métodos que existen en la app (mismos valores que el modal de gasto)
+const CATS_GASTO=['limpieza','lavanderia','mantenimiento','suministros','tecnologia','fiscal','financiero','inmueble','otros'];
+const METODOS_GASTO=['bizum','transferencia','tarjeta','metalico','cripto','wise'];
+// La IA a veces responde con SUS palabras ("energía", "internet") en vez de las nuestras.
+// Estas tablas las traducen. Si no hay traducción posible se devuelve null y NO se toca
+// el desplegable: se respeta lo que la usuaria ya hubiera elegido a mano.
+const CAT_SINONIMOS={
+  energia:'suministros',luz:'suministros',electricidad:'suministros',agua:'suministros',
+  gas:'suministros',internet:'suministros',telefonia:'suministros',telefono:'suministros',
+  wifi:'suministros',telecomunicaciones:'suministros',
+  software:'tecnologia',ia:'tecnologia',hosting:'tecnologia',dominio:'tecnologia',
+  informatica:'tecnologia',suscripcion:'tecnologia',
+  seguro:'inmueble',seguros:'inmueble',comunidad:'inmueble',alquiler:'inmueble',
+  banco:'financiero',hipoteca:'financiero',prestamo:'financiero',comisiones:'financiero',
+  impuestos:'fiscal',autonomos:'fiscal',gestoria:'fiscal',ibi:'fiscal',
+  reparacion:'mantenimiento',reparaciones:'mantenimiento',obras:'mantenimiento',
+  ferreteria:'mantenimiento',
+  colada:'lavanderia',tintoreria:'lavanderia'
+};
+const MET_SINONIMOS={
+  domiciliacion:'transferencia',domiciliado:'transferencia',recibo:'transferencia',
+  banco:'transferencia',adeudo:'transferencia',cargo:'transferencia',
+  efectivo:'metalico',contado:'metalico',cash:'metalico',
+  visa:'tarjeta',mastercard:'tarjeta',debito:'tarjeta',credito:'tarjeta'
+};
+// Quita acentos y pasa a minúsculas para comparar sin sustos ("Energía" = "energia")
+function _norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+// Devuelve el valor bueno para el <select>/pill, o null si no encaja con ninguna opción
+function _matchOpcion(valor,opcionesValidas,sinonimos){
+  const v=_norm(valor);
+  if(!v||v==='null')return null;
+  if(opcionesValidas.includes(v))return v;
+  return sinonimos[v]&&opcionesValidas.includes(sinonimos[v])?sinonimos[v]:null;
+}
 // Rellena el formulario de gasto con lo extraído; devuelve la lista de campos rellenados
 function fillGastoForm(parsed){
   let filled=[];
   if(parsed.concepto&&parsed.concepto!=='null'){document.getElementById('g-con').value=parsed.concepto;filled.push('concepto');}
   if(parsed.importe&&parsed.importe!==null){document.getElementById('g-imp').value=parsed.importe;filled.push('importe');}
   if(parsed.fecha&&parsed.fecha!=='null'&&parsed.fecha!=='YYYY-MM-DD'){document.getElementById('g-fecha').value=parsed.fecha;filled.push('fecha');}
-  if(parsed.categoria&&parsed.categoria!=='null'){document.getElementById('g-cat').value=parsed.categoria;filled.push('categoría');}
-  if(parsed.metodo&&parsed.metodo!=='null'){
-    const pill=document.querySelector(`#mpills-g .mpill[data-m="${parsed.metodo}"]`);
-    if(pill){document.querySelectorAll('#mpills-g .mpill').forEach(p=>p.classList.remove('on'));pill.classList.add('on');_gMet=parsed.metodo;filled.push('método');}
+  const selCat=document.getElementById('g-cat');
+  const cats=Array.from(selCat.options).map(o=>o.value);
+  const cat=_matchOpcion(parsed.categoria,cats,CAT_SINONIMOS);
+  if(cat){selCat.value=cat;filled.push('categoría');}
+  const mets=Array.from(document.querySelectorAll('#mpills-g .mpill')).map(p=>p.dataset.m);
+  const met=_matchOpcion(parsed.metodo,mets,MET_SINONIMOS);
+  if(met){
+    const pill=document.querySelector(`#mpills-g .mpill[data-m="${met}"]`);
+    if(pill){document.querySelectorAll('#mpills-g .mpill').forEach(p=>p.classList.remove('on'));pill.classList.add('on');_gMet=met;filled.push('método');}
   }
   return filled;
 }
@@ -722,8 +761,8 @@ async function importFolder(inp){
           concepto:(p.concepto&&p.concepto!=='null')?p.concepto:'',
           importe:(p.importe&&p.importe!==null)?p.importe:'',
           fecha:(p.fecha&&p.fecha!=='null'&&p.fecha!=='YYYY-MM-DD')?p.fecha:'',
-          categoria:(p.categoria&&p.categoria!=='null')?p.categoria:'otros',
-          metodo:(p.metodo&&p.metodo!=='null')?p.metodo:'bizum'
+          categoria:_matchOpcion(p.categoria,CATS_GASTO,CAT_SINONIMOS)||'otros',
+          metodo:_matchOpcion(p.metodo,METODOS_GASTO,MET_SINONIMOS)||'bizum'
         };
         it.estado='ok';
       }catch(e){
@@ -748,8 +787,8 @@ function renderBatchProgress(done,total){
   else{p.style.display='none';}
 }
 function renderBatchTable(){
-  const cats=['limpieza','lavanderia','mantenimiento','suministros','tecnologia','fiscal','financiero','inmueble','otros'];
-  const mets=['bizum','transferencia','tarjeta','metalico','cripto','wise'];
+  const cats=CATS_GASTO;
+  const mets=METODOS_GASTO;
   const esc=s=>String(s||'').replace(/"/g,'&quot;');
   let h='';
   _batch.forEach((it,i)=>{
