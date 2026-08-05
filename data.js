@@ -153,5 +153,9 @@ let GASTOS_VAR = sj('gv5',null) || [
   {id:'gv08',n:'Candado Miniso',              cat:'suministros',   fecha:'2026-01-08',importe:2.99,  metodo:'metalico',tipo:'v'},
   {id:'gv09',n:'Alcachofa ducha',             cat:'mantenimiento', fecha:'2026-02-06',importe:3.50,  metodo:'metalico',tipo:'v'},
   {id:'gv10',n:'Claude créditos API',         cat:'tecnologia',    fecha:'2026-03-27',importe:6.05,  metodo:'tarjeta', tipo:'v'},
+  // Factura Anthropic 4UYAUZ8G-0005 (25/07/2026), emitida en dólares: 12,11 $ (10,01 base +
+  // 2,10 de IVA español 21%). Convertido al tipo oficial del BCE del 24/07/2026 (el 25 era
+  // sábado y no publica): 1 EUR = 1,1377 USD → 8,80 base + 1,85 IVA = 10,64 €.
+  {id:'gv11',n:'Claude créditos API',         cat:'tecnologia',    fecha:'2026-07-25',importe:10.64, metodo:'tarjeta', tipo:'v'},
 ];
 
