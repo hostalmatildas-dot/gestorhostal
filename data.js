@@ -108,7 +108,15 @@ const GASTOS_FIJOS_DEFAULT=[
   {id:'gf08',n:'IMOU (cámaras)',         cat:'tecnologia',  sys:true, m:{1:3.49,2:3.49,3:3.49,4:3.49,5:3.49,6:3.49,7:3.49,8:3.49,9:3.49,10:3.49,11:3.49,12:3.49}},
   {id:'gf09',n:'ProtonVPN',              cat:'tecnologia',  sys:true, m:{1:9.99,2:9.99,3:9.99,4:9.99,5:9.99,6:9.99,7:9.99,8:9.99,9:9.99,10:9.99,11:9.99,12:9.99}},
   {id:'gf10',n:'ChatGPT',                cat:'tecnologia',  sys:true, m:{1:20,2:20,3:20,4:20,5:20,6:20,7:20,8:20,9:20,10:20,11:20,12:20}},
-  {id:'gf11',n:'ONE&ONE (hosting)',      cat:'tecnologia',  sys:true, m:{1:1.21,2:1.21,3:1.21,4:1.21,5:1.21,6:1.21,7:1.21,8:1.21,9:1.21,10:1.21,11:1.21,12:1.21}},
+  // IONOS (antes 1&1) — contrato 103964842 "MyWebsite Now e-commerce Plus". Importes REALES
+  // de las facturas descargadas de my.ionos.es (una por mes, día 1). El 1,21 €/mes anterior
+  // era la tarifa de principios de 2025, ya caducada. 2026:
+  //   ene 8,47 (202785140189) · feb 8,47 (202785435667) · mar 8,47 (202785713224)
+  //   abr 8,47 (202786021084) · may 8,47 (311100267874) · jun 8,47 (311100379599)
+  //   jul 8,47 (R01-311100547860, rectificativa) · ago 33,88 (311100740464)
+  // Ago sube porque el descuento de -21 €/mes venció el 30/07/2026.
+  // SEP a DIC a 0: sin factura descargada todavía. NUNCA estimar.
+  {id:'gf11',n:'IONOS (web/hosting)',    cat:'tecnologia',  sys:true, m:{1:8.47,2:8.47,3:8.47,4:8.47,5:8.47,6:8.47,7:8.47,8:33.88,9:0,10:0,11:0,12:0}},
   // Club Innova IA (Learn2Lead LLC): ene factura nº710 (03/01), feb pago recurrente confirmado
   // por la titular (factura pendiente de localizar), mar recibo nº768 (04/03). Baja del
   // servicio desde abril → resto del año a 0; la fila se retira en 2027.
