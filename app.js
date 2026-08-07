@@ -88,7 +88,7 @@ function ingTotal(mes,field='neto'){const a=_ma(mes);return visibleReservas().re
 function ingByRoom(room,mes,field='neto'){const a=_ma(mes);return visibleReservas().filter(r=>r.room===room).reduce((s,r)=>s+a.reduce((x,m)=>x+impMes(r,m,field),0),0);}
 function comTotal(mes){const a=_ma(mes);return visibleReservas().reduce((s,r)=>s+a.reduce((x,m)=>x+impMes(r,m,'com'),0),0);}
 function gFijo(mes){const a=_ma(mes);return visibleGastosFijos().reduce((s,g)=>s+a.reduce((x,m)=>x+(g.m[m]||0),0),0);}
-function gVar(mes){const a=_ma(mes);return visibleGastosVar().filter(g=>a.includes(new Date(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);}
+function gVar(mes){const a=_ma(mes);return visibleGastosVar().filter(g=>a.includes(pdate(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);}
 function gTot(mes){return gFijo(mes)+gVar(mes);}
 function neto(mes){return ingTotal(mes,'neto')-gTot(mes);}
 
@@ -1374,7 +1374,9 @@ function renderInforme(){
   const gfT=gFijo(Q1m);  // uses visibleGastosFijos() internally
   h+=`<tr class="tot"><td>SUBTOTAL GASTOS FIJOS</td>${Q1m.map(m=>`<td class="neg">${fn(gFijo([m]))}</td>`).join('')}<td class="neg">${fn(gfT)}</td></tr>`;
   h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS VARIABLES</td></tr>`;
-  visibleGastosVar().forEach(g=>{const gm=new Date(g.fecha).getMonth()+1;h+=`<tr><td>${g.n} <span class="dim">(${g.fecha})</span></td>${Q1m.map(m=>`<td class="${m===gm&&g.importe>0?'neg':m===gm&&g.importe<0?'pos':''}">${m===gm&&g.importe?fn(g.importe):''}</td>`).join('')}<td class="${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td></tr>`;});
+  // Solo los gastos del período: si no, salía una fila por cada gasto del año con la
+  // columna TOTAL rellena pero sin sumar en el subtotal (mismo filtro que ya usa el PDF).
+  visibleGastosVar().forEach(g=>{const gm=pdate(g.fecha).getMonth()+1;if(!Q1m.includes(gm))return;h+=`<tr><td>${g.n} <span class="dim">(${g.fecha})</span></td>${Q1m.map(m=>`<td class="${m===gm&&g.importe>0?'neg':m===gm&&g.importe<0?'pos':''}">${m===gm&&g.importe?fn(g.importe):''}</td>`).join('')}<td class="${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td></tr>`;});
   const gvT=gVar(Q1m);
   h+=`<tr class="tot"><td>SUBTOTAL GASTOS VARIABLES</td>${Q1m.map(m=>`<td class="${gVar([m])?'neg':''}">${gVar([m])?fn(gVar([m])):''}</td>`).join('')}<td class="${gvT<0?'pos':'neg'}">${gvT?fn(gvT):''}</td></tr>`;
   const gT=gfT+gvT,res=inT-gT;
@@ -1436,7 +1438,7 @@ function exportCSV(){
   csv+=`INGRESOS NETOS,${Q1m.map(m=>fv(ingTotal([m],'neto'))).join(',')},${fv(ingTotal(Q1m,'neto'))}\n--- GASTOS FIJOS ---,,,,\n`;
   visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${q(g.n)},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
   csv+=`--- GASTOS VARIABLES ---,,,,\n`;
-  visibleGastosVar().forEach(g=>{const gm=new Date(g.fecha).getMonth()+1;csv+=`${q(g.n)},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
+  visibleGastosVar().forEach(g=>{const gm=pdate(g.fecha).getMonth()+1;if(!Q1m.includes(gm))return;csv+=`${q(g.n)},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
   csv+=`TOTAL GASTOS,${Q1m.map(m=>fv(gTot([m]))).join(',')},${fv(gTot(Q1m))}\nRESULTADO NETO,${Q1m.map(m=>fv(ingTotal([m],'neto')-gTot([m]))).join(',')},${fv(ingTotal(Q1m,'neto')-gTot(Q1m))}\n`;
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`hostal_matildas_${infP}_2026.csv`;a.click();notif('CSV exportado');
 }
@@ -1688,7 +1690,7 @@ async function exportPDF(){
     // GASTOS VARIABLES
     drawHeader('>> GASTOS VARIABLES');
     visibleGastosVar().forEach(g=>{
-      const gm=new Date(g.fecha).getMonth()+1;
+      const gm=pdate(g.fecha).getMonth()+1;
       if(!Q1m.includes(gm))return;
       const vals=Q1m.map(m=>m===gm?g.importe:null);
       drawRow(g.n,vals,g.importe,[191,95,74]);
@@ -1709,8 +1711,8 @@ async function exportPDF(){
 
     // JUSTIFICANTES — new page with photos (variables + fijos, ordenados por mes)
     const gastosFoto=[
-      ...visibleGastosVar().filter(g=>g.foto&&Q1m.includes(new Date(g.fecha).getMonth()+1))
-        .map(g=>({mes:new Date(g.fecha).getMonth()+1,n:g.n,fecha:g.fecha,importe:g.importe,foto:g.foto})),
+      ...visibleGastosVar().filter(g=>g.foto&&Q1m.includes(pdate(g.fecha).getMonth()+1))
+        .map(g=>({mes:pdate(g.fecha).getMonth()+1,n:g.n,fecha:g.fecha,importe:g.importe,foto:g.foto})),
       ...visibleGastosFijos().flatMap(g=>Q1m.filter(m=>g.fotoM&&g.fotoM[m])
         .map(m=>({mes:m,n:g.n+' (fijo)',fecha:MN[m]+' 2026',importe:g.m[m]||0,foto:g.fotoM[m]})))
     ].sort((a,b)=>a.mes-b.mes);
