@@ -1337,15 +1337,53 @@ function closeModals(){document.querySelectorAll('.mbg').forEach(m=>m.classList.
 
 // ═══════════ INFORME ═══════════
 let infP='q1';
+let infRango=null;   // {d:'2026-01-01', h:'2026-07-31'} o null si manda una pastilla
 function setInfPeriod(p,btn){
   document.querySelectorAll('#inf-pills .pill').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
-  infP=p;
+  infP=p; infRango=null;
+  const nota=document.getElementById('inf-rango-nota');
+  if(nota)nota.style.display='none';
   renderInforme();
 }
 
-function renderInforme(){
+// Balance entre dos fechas. Se redondea a MESES ENTEROS a propósito: los gastos fijos
+// solo tienen mes (g.m[1..12]), no día — partirlos por la mitad sería inventar, y la
+// regla de la casa es que sin documento no se estima nada.
+function aplicarRango(){
+  const d=document.getElementById('inf-desde').value, h=document.getElementById('inf-hasta').value;
+  if(!d||!h){alert('Pon las dos fechas: desde y hasta');return;}
+  if(h<d){alert('La fecha «hasta» no puede ser anterior a la de «desde»');return;}
+  if(d.slice(0,4)!=='2026'||h.slice(0,4)!=='2026'){alert('Por ahora el gestor solo lleva el año 2026');return;}
+  const m1=+d.slice(5,7), m2=+h.slice(5,7);
+  infRango={d,h,m1,m2};
+  document.querySelectorAll('#inf-pills .pill').forEach(b=>b.classList.remove('on'));
+  const nota=document.getElementById('inf-rango-nota');
+  if(nota){
+    const MN={1:'enero',2:'febrero',3:'marzo',4:'abril',5:'mayo',6:'junio',7:'julio',8:'agosto',9:'septiembre',10:'octubre',11:'noviembre',12:'diciembre'};
+    const redondeado=d.slice(8)!=='01'||h!==`2026-${String(m2).padStart(2,'0')}-${new Date(2026,m2,0).getDate()}`;
+    nota.style.display='block';
+    nota.innerHTML=`📅 Mostrando <b>${MN[m1]}</b>${m2>m1?` a <b>${MN[m2]}</b>`:''} completo${m2>m1?'s':''}`
+      +(redondeado?' — los meses van enteros: los gastos fijos son importes mensuales y no se pueden partir por días sin inventar.':'.');
+  }
+  renderInforme();
+}
+
+// Único sitio donde se decide el período del informe. Lo usan la tabla, el CSV, el PDF
+// y el ZIP de justificantes, para que los cuatro cuenten siempre lo mismo.
+function periodoInf(){
+  if(infRango){
+    const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
+    const cols=[];for(let m=infRango.m1;m<=infRango.m2;m++)cols.push(m);
+    const lbl=infRango.m1===infRango.m2?`${MN[infRango.m1]} 2026`:`${MN[infRango.m1]}–${MN[infRango.m2]} 2026`;
+    return {cols,label:lbl,slug:`${String(infRango.m1).padStart(2,'0')}a${String(infRango.m2).padStart(2,'0')}`};
+  }
   const pd=PERIOD_DEFS[infP];
+  return {cols:pd.cols,label:pd.label,slug:infP};
+}
+
+function renderInforme(){
+  const pd=periodoInf();
   const Q1m=pd.cols;
   const mLabel=pd.label;
   // Update mode badge
@@ -1423,8 +1461,9 @@ function renderProrrBox(elId,mesArr){
 }
 
 function exportCSV(){
-  const Q1m=PERIOD_DEFS[infP].cols;
-  const mLabel=PERIOD_DEFS[infP].label;
+  const P=periodoInf();
+  const Q1m=P.cols;
+  const mLabel=P.label;
   const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
   const fv=v=>v?String(v.toFixed(2)):'';
   const q=s=>{s=String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
@@ -1440,7 +1479,7 @@ function exportCSV(){
   csv+=`--- GASTOS VARIABLES ---,,,,\n`;
   visibleGastosVar().forEach(g=>{const gm=pdate(g.fecha).getMonth()+1;if(!Q1m.includes(gm))return;csv+=`${q(g.n)},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
   csv+=`TOTAL GASTOS,${Q1m.map(m=>fv(gTot([m]))).join(',')},${fv(gTot(Q1m))}\nRESULTADO NETO,${Q1m.map(m=>fv(ingTotal([m],'neto')-gTot([m]))).join(',')},${fv(ingTotal(Q1m,'neto')-gTot(Q1m))}\n`;
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`hostal_matildas_${infP}_2026.csv`;a.click();notif('CSV exportado');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`hostal_matildas_${P.slug}_2026.csv`;a.click();notif('CSV exportado');
 }
 
 // ═══════════ GASTOS FIJOS CRUD ═══════════
@@ -1568,14 +1607,16 @@ async function exportPDF(){
       });
     }
     const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const pd=PERIOD_DEFS[infP];
+    const pd=periodoInf();
     const Q1m=pd.cols;
+    // Con más de 4 columnas (rangos largos) el A4 vertical no da: se pasa a apaisado.
+    const apaisado=Q1m.length>4;
+    const doc=new jsPDF({orientation:apaisado?'landscape':'portrait',unit:'mm',format:'a4'});
     const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
     const mNames=Q1m.map(m=>MN[m]);
     const mLabel=pd.label;
     const mode=IS_REAL?'REAL':'FISCAL';
-    const W=210,M=15;
+    const W=apaisado?297:210,M=15,HOJA=apaisado?210:297;
 
     // Header
     doc.setFillColor(13,13,11);
@@ -1614,7 +1655,7 @@ async function exportPDF(){
       let lines=doc.splitTextToSize((indent?'  ':'')+label,38);
       if(lines.length>2){lines=lines.slice(0,2);lines[1]=lines[1].replace(/\s*\S{0,1}$/,'')+'…';}
       const rowH=Math.max(lineH,lines.length*LH+1.4);
-      if(y+rowH>285){doc.addPage();y=15;}
+      if(y+rowH>HOJA-12){doc.addPage();y=15;}
       if(color){doc.setTextColor(...color);}else{doc.setTextColor(60,60,60);}
       // Dibuja línea a línea con interlineado LH fijo para que coincida con rowH (evita solapes)
       lines.forEach((ln,li)=>doc.text(ln,M,y+3.5+li*LH));
@@ -1704,7 +1745,7 @@ async function exportPDF(){
     const gT=gfT+gvT;
     drawRow('TOTAL GASTOS',Q1m.map(m=>gTot([m])),gT,[191,95,74]);
     const res=inT-gT;
-    if(y+7>285){doc.addPage();y=15;}
+    if(y+7>HOJA-12){doc.addPage();y=15;}
     if(res>=0){doc.setFillColor(230,244,235);}else{doc.setFillColor(247,230,226);}
     doc.rect(M,y,W-2*M,7,'F');
     drawRow('RESULTADO NETO',Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return n;}),res,res>=0?[90,158,114]:[191,95,74]);
@@ -1727,7 +1768,7 @@ async function exportPDF(){
       doc.setTextColor(0,0,0);
       let jy=20;
       for(const g of gastosFoto){
-        if(jy>240){doc.addPage();jy=15;}
+        if(jy>HOJA-57){doc.addPage();jy=15;}
         doc.setFontSize(8);
         doc.setFont('helvetica','bold');
         doc.setTextColor(60,60,60);
@@ -1740,7 +1781,7 @@ async function exportPDF(){
             // Escala manteniendo proporción dentro de una caja máx. 80×90 mm
             const maxW=80,maxH=90;let iw=maxW,ih=maxH;
             try{const p=doc.getImageProperties(g.foto);const r=Math.min(maxW/p.width,maxH/p.height);iw=p.width*r;ih=p.height*r;}catch(_){ih=60;}
-            if(jy+ih>285){doc.addPage();jy=15;}
+            if(jy+ih>HOJA-12){doc.addPage();jy=15;}
             doc.addImage(g.foto,imgType,M,jy,iw,ih,'','FAST');
             jy+=ih+5;
           } else if(g.foto.startsWith('data:application/pdf')){
@@ -1754,7 +1795,7 @@ async function exportPDF(){
       }
     }
 
-    doc.save('hostal_matildas_informe_'+infP+'_2026.pdf');
+    doc.save('hostal_matildas_informe_'+pd.slug+'_2026.pdf');
     notif('PDF generado ✓');
   }catch(e){
     console.error('PDF error:',e);
@@ -1772,11 +1813,12 @@ function _slugFile(s){
 
 function justificantesPeriodo(){
   const MN={1:'enero',2:'febrero',3:'marzo',4:'abril',5:'mayo',6:'junio',7:'julio',8:'agosto',9:'septiembre',10:'octubre',11:'noviembre',12:'diciembre'};
-  const Q1m=PERIOD_DEFS[infP].cols;
-  const tri=infP.replace('q','T').toUpperCase();
+  const P=periodoInf();
+  const Q1m=P.cols;
+  const tri=P.slug.replace('q','T').toUpperCase();
   const out=[];
   visibleGastosVar().forEach(g=>{
-    const m=new Date(g.fecha).getMonth()+1;
+    const m=pdate(g.fecha).getMonth()+1;
     if(g.foto&&Q1m.includes(m))
       out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_${g.fecha}.jpg`,data:g.foto});
   });
@@ -1791,7 +1833,7 @@ function justificantesPeriodo(){
 
 async function exportJustificantes(){
   const items=justificantesPeriodo();
-  const tri=infP.replace('q','T').toUpperCase();
+  const tri=periodoInf().slug.replace('q','T').toUpperCase();
   if(!items.length){notif('No hay fotos guardadas en '+tri,true);return;}
   notif('Preparando '+items.length+' justificantes...');
   try{
