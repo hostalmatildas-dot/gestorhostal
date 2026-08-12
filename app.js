@@ -2126,6 +2126,17 @@ function cleanupInventedData(){
     });
     if(ionos.n==='ONE&ONE (hosting)'){ionos.n='IONOS (web/hosting)';fjChanged=true;}
   }
+  const railway=GASTOS_FIJOS.find(g=>g.id==='gf1779356626013');
+  if(railway){
+    // Railway: el 5 €/mes plano de los 12 meses era inventado — el servicio nació el
+    // 21/05/2026. Facturas reales: ZSYOJGWP-0001 (21/05) 5,00 $ = 4,31 € y ZSYOJGWP-0002
+    // (21/06) 1,53 $ = 1,33 €, al cambio del BCE de cada día. Jul en adelante sin factura → 0.
+    const eqR=(a,b)=>Math.abs((a||0)-b)<0.01;
+    const realR={1:0,2:0,3:0,4:0,5:4.31,6:1.33,7:0,8:0,9:0,10:0,11:0,12:0};
+    Object.entries(realR).forEach(([m,v])=>{
+      if(eqR(railway.m[m],5)&&!eqR(v,5)){railway.m[m]=v;fjChanged=true;}
+    });
+  }
   const innova=GASTOS_FIJOS.find(g=>g.id==='gf12');
   if(innova){
     // Club Innova de baja desde abril: un gf6 sincronizado viejo puede traer el 20 plano de todo el año
