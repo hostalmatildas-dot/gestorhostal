@@ -2112,6 +2112,20 @@ function cleanupInventedData(){
     const estimacionVieja={8:380,9:300,10:260,11:300,12:420};
     Object.entries(estimacionVieja).forEach(([m,v])=>{if(eq(luz.m[m],v)){luz.m[m]=0;fjChanged=true;}});
   }
+  const ionos=GASTOS_FIJOS.find(g=>g.id==='gf11');
+  if(ionos){
+    // IONOS (antes 1&1): el 1,21 €/mes era la tarifa de principios de 2025, ya caducada.
+    // Facturas reales del contrato 103964842: 8,47 €/mes ene–jul 2026 y 33,88 € en agosto
+    // (venció el descuento de -21 €/mes el 30/07/2026). Sep–dic a 0 hasta tener factura.
+    // Solo se reemplaza el 1,21 plano de un gf6 sincronizado viejo: un importe distinto
+    // (cargado con factura por la usuaria) se respeta.
+    const eq11=(a,b)=>Math.abs((a||0)-b)<0.01;
+    const real={1:8.47,2:8.47,3:8.47,4:8.47,5:8.47,6:8.47,7:8.47,8:33.88,9:0,10:0,11:0,12:0};
+    Object.entries(real).forEach(([m,v])=>{
+      if(eq11(ionos.m[m],1.21)&&!eq11(v,1.21)){ionos.m[m]=v;fjChanged=true;}
+    });
+    if(ionos.n==='ONE&ONE (hosting)'){ionos.n='IONOS (web/hosting)';fjChanged=true;}
+  }
   const innova=GASTOS_FIJOS.find(g=>g.id==='gf12');
   if(innova){
     // Club Innova de baja desde abril: un gf6 sincronizado viejo puede traer el 20 plano de todo el año
