@@ -266,27 +266,28 @@ function renderDashboard(){
     <div class="kpi ${res>=0?'g':'r'}"><div class="kpi-lbl">Resultado neto</div><div class="kpi-val ${res>=0?'green':'red'}">${fn0(res)}</div><div class="kpi-sub">${res>=0?'Beneficio':'Pérdida'}</div></div>
     <div class="kpi o"><div class="kpi-lbl">Ocupación</div><div class="kpi-val gold">${ocu}%</div><div class="kpi-sub">${ROOMS.length} hab. · sin resúmenes</div></div>`;
 
-  // Balance cards: año | Q1 siempre fijo | período seleccionado
-  const q1mes=[1,2,3];
-  const ingQ1=ingTotal(q1mes,'bruto'),comQ1=Math.abs(comTotal(q1mes)),netoQ1=ingTotal(q1mes,'neto'),gastQ1=gTot(q1mes),resQ1=netoQ1-gastQ1;
-  const ingAnual=ingTotal('year','neto'),gastFijosAnual=gFijo('year'),gastVarQ1=gVar(q1mes);
+  // Balance cards: año entero | de enero al mes de hoy | período seleccionado
+  const hastaHoy=mesesHastaHoy(), mesHoyL=ML[hastaHoy[hastaHoy.length-1]];
+  const ingAño=ingTotal('year','bruto'),comAño=Math.abs(comTotal('year')),netoAño=ingTotal('year','neto');
+  const fijosAño=gFijo('year'),varAño=gVar('year'),resAño=netoAño-fijosAño-varAño;
+  const ingH=ingTotal(hastaHoy,'bruto'),comH=Math.abs(comTotal(hastaHoy)),netoH=ingTotal(hastaHoy,'neto'),gastH=gTot(hastaHoy),resH=netoH-gastH;
   document.getElementById('bal-cards').innerHTML=`
     <div class="bal-card">
-      <div class="bal-card-title"><span class="bal-dot a"></span>Balance anual proyectado</div>
-      <div class="bal-r"><span class="bal-k">Ingresos año (bruto)</span><span class="bal-v pos">${fn0(ingTotal('year','bruto'))}</span></div>
-      <div class="bal-r"><span class="bal-k">Comisiones OTA año</span><span class="bal-v neg">${fn0(Math.abs(comTotal('year')))}</span></div>
-      <div class="bal-r"><span class="bal-k">Ingresos año (neto)</span><span class="bal-v pos">${fn0(ingTotal('year','neto'))}</span></div>
-      <div class="bal-r"><span class="bal-k">Gastos fijos año</span><span class="bal-v neg">${fn0(gastFijosAnual)}</span></div>
-      <div class="bal-r"><span class="bal-k">Gastos variables conocidos</span><span class="bal-v neg">${fn0(gastVarQ1)}</span></div>
-      <div class="bal-neto"><span class="bal-neto-lbl">Resultado anual estimado</span><span class="bal-neto-val ${ingTotal('year','neto')-gastFijosAnual-gastVarQ1>=0?'pos':'neg'}">${fn0(ingTotal('year','neto')-gastFijosAnual-gastVarQ1)}</span></div>
+      <div class="bal-card-title"><span class="bal-dot a"></span>Balance del año 2026</div>
+      <div class="bal-r"><span class="bal-k">Ingresos año (bruto)</span><span class="bal-v pos">${fn0(ingAño)}</span></div>
+      <div class="bal-r"><span class="bal-k">Comisiones OTA año</span><span class="bal-v neg">${fn0(comAño)}</span></div>
+      <div class="bal-r"><span class="bal-k">Ingresos año (neto)</span><span class="bal-v pos">${fn0(netoAño)}</span></div>
+      <div class="bal-r"><span class="bal-k">Gastos fijos año</span><span class="bal-v neg">${fn0(fijosAño)}</span></div>
+      <div class="bal-r"><span class="bal-k">Gastos variables año</span><span class="bal-v neg">${fn0(varAño)}</span></div>
+      <div class="bal-neto"><span class="bal-neto-lbl">Resultado del año</span><span class="bal-neto-val ${resAño>=0?'pos':'neg'}">${fn0(resAño)}</span></div>
     </div>
     <div class="bal-card">
-      <div class="bal-card-title"><span class="bal-dot q"></span>Balance Q1 real</div>
-      <div class="bal-r"><span class="bal-k">Ingresos brutos</span><span class="bal-v pos">${fn0(ingQ1)}</span></div>
-      <div class="bal-r"><span class="bal-k">Comisiones OTA</span><span class="bal-v neg">${fn0(comQ1)}</span></div>
-      <div class="bal-r"><span class="bal-k">Ingresos netos</span><span class="bal-v pos">${fn0(netoQ1)}</span></div>
-      <div class="bal-r"><span class="bal-k">Gastos Q1</span><span class="bal-v neg">${fn0(gastQ1)}</span></div>
-      <div class="bal-neto"><span class="bal-neto-lbl">Resultado neto Q1</span><span class="bal-neto-val ${resQ1>=0?'pos':'neg'}">${fn0(resQ1)}</span></div>
+      <div class="bal-card-title"><span class="bal-dot q"></span>Balance hasta hoy · Ene–${mesHoyL}</div>
+      <div class="bal-r"><span class="bal-k">Ingresos brutos</span><span class="bal-v pos">${fn0(ingH)}</span></div>
+      <div class="bal-r"><span class="bal-k">Comisiones OTA</span><span class="bal-v neg">${fn0(comH)}</span></div>
+      <div class="bal-r"><span class="bal-k">Ingresos netos</span><span class="bal-v pos">${fn0(netoH)}</span></div>
+      <div class="bal-r"><span class="bal-k">Gastos</span><span class="bal-v neg">${fn0(gastH)}</span></div>
+      <div class="bal-neto"><span class="bal-neto-lbl">Resultado hasta hoy</span><span class="bal-neto-val ${resH>=0?'pos':'neg'}">${fn0(resH)}</span></div>
     </div>
     <div class="bal-card">
       <div class="bal-card-title"><span class="bal-dot m"></span>${mL}</div>
@@ -2182,5 +2183,5 @@ function cleanupInventedData(){
 }
 
 cleanupInventedData();
-initFirebase();
 marcarPastillasIniciales();
+initFirebase();
