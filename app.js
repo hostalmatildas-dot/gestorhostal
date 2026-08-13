@@ -2184,4 +2184,5 @@ function cleanupInventedData(){
 
 cleanupInventedData();
 marcarPastillasIniciales();
+renderDashboard();   // pinta ya con lo guardado en este aparato; al llegar la nube se repinta
 initFirebase();
