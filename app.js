@@ -274,7 +274,8 @@ function renderExcTable(pKey){
   const cols=pd.cols;
   const isFull=pKey==='year';
   const colSpan=1+cols.length+(isFull?1:0);
-  const hasD=c=>c<=3;
+  // Un mes se ve atenuado solo si de verdad no tiene nada cargado (antes estaba fijo a Ene–Mar)
+  const hasD=c=>ingTotal([c],'bruto')>0||gTot([c])>0;
   let th=`<thead><tr><th class="L stk" style="min-width:120px">Concepto</th>`;
   cols.forEach(c=>{th+=`<th style="${!hasD(c)?'opacity:.4':''}">` +ML[c]+'</th>';});
   if(isFull)th+=`<th class="ct">TOTAL</th>`;

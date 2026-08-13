@@ -82,15 +82,23 @@
   <div class="period-row">
     <span class="pr-label">Ver</span>
     <div class="pills">
-      <button class="pill"     onclick="setPeriod('year',this)">Año</button>
-      <button class="pill on"  onclick="setPeriod('q1',this)">Q1</button>
-      <button class="pill"     onclick="setPeriod('q2',this)">Q2</button>
-      <button class="pill"     onclick="setPeriod('q3',this)">Q3</button>
-      <button class="pill"     onclick="setPeriod('q4',this)">Q4</button>
-      <button class="pill"     onclick="setPeriod('1',this)">Ene</button>
-      <button class="pill"     onclick="setPeriod('2',this)">Feb</button>
-      <button class="pill"     onclick="setPeriod('3',this)">Mar</button>
-      <button class="pill"     onclick="setPeriod('4',this)">Abr</button>
+      <button class="pill" data-p="year" onclick="setPeriod('year',this)">Año</button>
+      <button class="pill" data-p="q1"   onclick="setPeriod('q1',this)">Q1</button>
+      <button class="pill" data-p="q2"   onclick="setPeriod('q2',this)">Q2</button>
+      <button class="pill" data-p="q3"   onclick="setPeriod('q3',this)">Q3</button>
+      <button class="pill" data-p="q4"   onclick="setPeriod('q4',this)">Q4</button>
+      <button class="pill" data-p="1"    onclick="setPeriod('1',this)">Ene</button>
+      <button class="pill" data-p="2"    onclick="setPeriod('2',this)">Feb</button>
+      <button class="pill" data-p="3"    onclick="setPeriod('3',this)">Mar</button>
+      <button class="pill" data-p="4"    onclick="setPeriod('4',this)">Abr</button>
+      <button class="pill" data-p="5"    onclick="setPeriod('5',this)">May</button>
+      <button class="pill" data-p="6"    onclick="setPeriod('6',this)">Jun</button>
+      <button class="pill" data-p="7"    onclick="setPeriod('7',this)">Jul</button>
+      <button class="pill" data-p="8"    onclick="setPeriod('8',this)">Ago</button>
+      <button class="pill" data-p="9"    onclick="setPeriod('9',this)">Sep</button>
+      <button class="pill" data-p="10"   onclick="setPeriod('10',this)">Oct</button>
+      <button class="pill" data-p="11"   onclick="setPeriod('11',this)">Nov</button>
+      <button class="pill" data-p="12"   onclick="setPeriod('12',this)">Dic</button>
     </div>
     <button class="ing-btn" onclick="document.getElementById('recon-input').click()" style="margin-left:auto;background:var(--gold-bg,rgba(200,168,74,.12));border-color:var(--gold);color:var(--gold)">📥 Importar de Booking/Airbnb</button>
     <button class="ing-btn" onclick="openIngModal()">+ Añadir ingreso</button>
@@ -111,16 +119,22 @@
   <div class="hab-period-row">
     <span class="pr-label">Período</span>
     <div class="pills" id="hab-pills">
-      <button class="pill on" onclick="setHP('q1',this)">Q1</button>
-      <button class="pill" onclick="setHP('q2',this)">Q2</button>
-      <button class="pill" onclick="setHP('q3',this)">Q3</button>
-      <button class="pill" onclick="setHP('q4',this)">Q4</button>
-      <button class="pill" onclick="setHP('1',this)">Ene</button>
-      <button class="pill" onclick="setHP('2',this)">Feb</button>
-      <button class="pill" onclick="setHP('3',this)">Mar</button>
-      <button class="pill" onclick="setHP('4',this)">Abr</button>
-      <button class="pill" onclick="setHP('5',this)">May</button>
-      <button class="pill" onclick="setHP('6',this)">Jun</button>
+      <button class="pill" data-p="q1" onclick="setHP('q1',this)">Q1</button>
+      <button class="pill" data-p="q2" onclick="setHP('q2',this)">Q2</button>
+      <button class="pill" data-p="q3" onclick="setHP('q3',this)">Q3</button>
+      <button class="pill" data-p="q4" onclick="setHP('q4',this)">Q4</button>
+      <button class="pill" data-p="1"  onclick="setHP('1',this)">Ene</button>
+      <button class="pill" data-p="2"  onclick="setHP('2',this)">Feb</button>
+      <button class="pill" data-p="3"  onclick="setHP('3',this)">Mar</button>
+      <button class="pill" data-p="4"  onclick="setHP('4',this)">Abr</button>
+      <button class="pill" data-p="5"  onclick="setHP('5',this)">May</button>
+      <button class="pill" data-p="6"  onclick="setHP('6',this)">Jun</button>
+      <button class="pill" data-p="7"  onclick="setHP('7',this)">Jul</button>
+      <button class="pill" data-p="8"  onclick="setHP('8',this)">Ago</button>
+      <button class="pill" data-p="9"  onclick="setHP('9',this)">Sep</button>
+      <button class="pill" data-p="10" onclick="setHP('10',this)">Oct</button>
+      <button class="pill" data-p="11" onclick="setHP('11',this)">Nov</button>
+      <button class="pill" data-p="12" onclick="setHP('12',this)">Dic</button>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
@@ -155,18 +169,23 @@
   <div class="hab-period-row">
     <span class="pr-label">Ver</span>
     <div class="pills" id="gasto-pills">
-      <button class="pill on" onclick="setGP('year',this)">Año</button>
-      <button class="pill" onclick="setGP('q1',this)">Q1</button>
-      <button class="pill" onclick="setGP('q2',this)">Q2</button>
-      <button class="pill" onclick="setGP('q3',this)">Q3</button>
-      <button class="pill" onclick="setGP('q4',this)">Q4</button>
-      <button class="pill" onclick="setGP('1',this)">Ene</button>
-      <button class="pill" onclick="setGP('2',this)">Feb</button>
-      <button class="pill" onclick="setGP('3',this)">Mar</button>
-      <button class="pill" onclick="setGP('4',this)">Abr</button>
-      <button class="pill" onclick="setGP('5',this)">May</button>
-      <button class="pill" onclick="setGP('6',this)">Jun</button>
-      <button class="pill" onclick="setGP('7',this)">Jul</button>
+      <button class="pill" data-p="year" onclick="setGP('year',this)">Año</button>
+      <button class="pill" data-p="q1"   onclick="setGP('q1',this)">Q1</button>
+      <button class="pill" data-p="q2"   onclick="setGP('q2',this)">Q2</button>
+      <button class="pill" data-p="q3"   onclick="setGP('q3',this)">Q3</button>
+      <button class="pill" data-p="q4"   onclick="setGP('q4',this)">Q4</button>
+      <button class="pill" data-p="1"    onclick="setGP('1',this)">Ene</button>
+      <button class="pill" data-p="2"    onclick="setGP('2',this)">Feb</button>
+      <button class="pill" data-p="3"    onclick="setGP('3',this)">Mar</button>
+      <button class="pill" data-p="4"    onclick="setGP('4',this)">Abr</button>
+      <button class="pill" data-p="5"    onclick="setGP('5',this)">May</button>
+      <button class="pill" data-p="6"    onclick="setGP('6',this)">Jun</button>
+      <button class="pill" data-p="7"    onclick="setGP('7',this)">Jul</button>
+      <button class="pill" data-p="8"    onclick="setGP('8',this)">Ago</button>
+      <button class="pill" data-p="9"    onclick="setGP('9',this)">Sep</button>
+      <button class="pill" data-p="10"   onclick="setGP('10',this)">Oct</button>
+      <button class="pill" data-p="11"   onclick="setGP('11',this)">Nov</button>
+      <button class="pill" data-p="12"   onclick="setGP('12',this)">Dic</button>
     </div>
   </div>
   <div class="g-sec">
@@ -194,10 +213,10 @@
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
           <span class="pr-label">Período</span>
           <div class="pills" id="inf-pills">
-            <button class="pill on" onclick="setInfPeriod('q1',this)">1T · Ene–Mar</button>
-            <button class="pill" onclick="setInfPeriod('q2',this)">2T · Abr–Jun</button>
-            <button class="pill" onclick="setInfPeriod('q3',this)">3T · Jul–Sep</button>
-            <button class="pill" onclick="setInfPeriod('q4',this)">4T · Oct–Dic</button>
+            <button class="pill" data-p="q1" onclick="setInfPeriod('q1',this)">1T · Ene–Mar</button>
+            <button class="pill" data-p="q2" onclick="setInfPeriod('q2',this)">2T · Abr–Jun</button>
+            <button class="pill" data-p="q3" onclick="setInfPeriod('q3',this)">3T · Jul–Sep</button>
+            <button class="pill" data-p="q4" onclick="setInfPeriod('q4',this)">4T · Oct–Dic</button>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;">
