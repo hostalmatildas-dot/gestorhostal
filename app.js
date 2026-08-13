@@ -124,7 +124,19 @@ const PERIOD_DEFS={
 };
 for(let i=1;i<=12;i++) PERIOD_DEFS[String(i)]={cols:[i],label:{1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'}[i],mes:[i]};
 
-let curP='q1', habP='q1', gastP='year';
+// El gestor abre en el mes de hoy. Si algún día se mira desde otro año que no sea el
+// 2026 (el único que lleva la app), se cae a la vista de año entero para no quedarse
+// en un mes vacío.
+const HOY=new Date();
+const ES_2026=HOY.getFullYear()===2026;
+const MES_HOY=HOY.getMonth()+1;
+function periodoDeHoy(){return ES_2026?String(MES_HOY):'year';}
+function trimestreDeHoy(){return ES_2026?'q'+Math.ceil(MES_HOY/3):'q1';}
+// Meses transcurridos del año: [1..mes de hoy]. Meses enteros: los gastos fijos solo
+// tienen mes (g.m[1..12]), no día, así que el mes en curso entra completo.
+function mesesHastaHoy(){return ES_2026?Array.from({length:MES_HOY},(_,i)=>i+1):[1,2,3,4,5,6,7,8,9,10,11,12];}
+
+let curP=periodoDeHoy(), habP=periodoDeHoy(), gastP=periodoDeHoy();
 function setGP(p,btn){
   document.querySelectorAll('#gasto-pills .pill').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on'); gastP=p; renderGastos();
@@ -153,6 +165,24 @@ function setPeriod(p,btn){
 function setHP(p,btn){
   document.querySelectorAll('#hab-pills .pill').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on'); habP=p; renderHabs();
+}
+
+// Deja marcada la pastilla del período con el que arranca cada página (mes de hoy, y
+// su trimestre en el Informe) y pone el «hasta» del rango en la fecha de hoy.
+function marcarPastillasIniciales(){
+  const marcar=(sel,p)=>{
+    const cont=document.querySelector(sel);
+    if(!cont)return;
+    cont.querySelectorAll('.pill').forEach(b=>b.classList.remove('on'));
+    const btn=cont.querySelector(`.pill[data-p="${p}"]`);
+    if(btn)btn.classList.add('on');
+  };
+  marcar('#page-dashboard .pills',curP);
+  marcar('#hab-pills',habP);
+  marcar('#gasto-pills',gastP);
+  marcar('#inf-pills',infP);
+  const h=document.getElementById('inf-hasta');
+  if(h&&!h.value)h.value=ES_2026?`2026-${String(MES_HOY).padStart(2,'0')}-${String(HOY.getDate()).padStart(2,'0')}`:'2026-12-31';
 }
 
 // ═══════════ PMS SYNC + RECONCILIACIÓN ═══════════
@@ -1337,7 +1367,7 @@ function closeModals(){document.querySelectorAll('.mbg').forEach(m=>m.classList.
 
 
 // ═══════════ INFORME ═══════════
-let infP='q1';
+let infP=trimestreDeHoy();
 let infRango=null;   // {d:'2026-01-01', h:'2026-07-31'} o null si manda una pastilla
 function setInfPeriod(p,btn){
   document.querySelectorAll('#inf-pills .pill').forEach(b=>b.classList.remove('on'));
@@ -2153,3 +2183,4 @@ function cleanupInventedData(){
 
 cleanupInventedData();
 initFirebase();
+marcarPastillasIniciales();
