@@ -2098,6 +2098,22 @@ function sinFotosFijos(arr){return (arr||[]).map(g=>{if(!g||!g.fotoM)return g;co
 // que aún no había llegado a subir se borraba solo a los 5 minutos. Ahora se juntan por id:
 // manda la nube, pero lo que este aparato guardó y todavía no subió se conserva.
 function _pend(k){return sj('pend_'+k,[]);}
+// Los gastos fijos sí los manda la nube entera, pero las fotos que aún no se han mudado
+// al almacén solo están en este aparato: no se pierden al bajar la copia.
+function juntarFijos(cloudArr,localArr){
+  const cloud=Array.isArray(cloudArr)?cloudArr:[];
+  const porId={};(localArr||[]).forEach(g=>{if(g&&g.id)porId[g.id]=g;});
+  return cloud.map(g=>{
+    const l=g&&porId[g.id];
+    if(!l||!l.fotoM)return g;
+    const faltan={};
+    Object.keys(l.fotoM).forEach(m=>{
+      const yaEnNube=(g.fotoM&&g.fotoM[m])||(g.fotoUrlM&&g.fotoUrlM[m]);
+      if(l.fotoM[m]&&!yaEnNube)faltan[m]=l.fotoM[m];
+    });
+    return Object.keys(faltan).length?{...g,fotoM:{...(g.fotoM||{}),...faltan}}:g;
+  });
+}
 function juntarPorId(k,cloudArr,localArr){
   const cloud=Array.isArray(cloudArr)?cloudArr:[];
   const idsCloud=new Set(cloud.map(x=>x&&x.id));
@@ -2192,7 +2208,7 @@ async function initFirebase(){
       const d=snap.data();
       if(d.ing_extra){RESERVAS_EXTRA=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
       if(d.gv5){GASTOS_VAR=juntarPorId('gv5',d.gv5,GASTOS_VAR);guardarLocal('gv5',GASTOS_VAR);}
-      if(d.gf6){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);guardarLocal('gf6',GASTOS_FIJOS);}
+      if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);}
       _syncing=false;
       cleanupInventedData();
     }
@@ -2214,7 +2230,7 @@ async function initFirebase(){
         let changed=false;
         if(d.ing_extra){const nx=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);if(JSON.stringify(nx)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=nx;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);changed=true;}}
         if(d.gv5){const nx=juntarPorId('gv5',d.gv5,GASTOS_VAR);if(JSON.stringify(nx)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=nx;guardarLocal('gv5',GASTOS_VAR);changed=true;}}
-        if(d.gf6&&JSON.stringify(d.gf6)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);guardarLocal('gf6',GASTOS_FIJOS);changed=true;}
+        if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);if(JSON.stringify(nf)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);changed=true;}}
         _syncing=false;
         cleanupInventedData();
         if(changed){
