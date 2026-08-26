@@ -42,13 +42,14 @@ function fdate(s){const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||''));return 
 // Mes (1–12) de un gasto variable. Devuelve NaN si la fecha falta o no se entiende:
 // esos gastos no se esconden, se marcan con la chapa «sin fecha» para que no se pierdan.
 function gMes(g){const m=pdate(String((g&&g.fecha)||'').slice(0,10)).getMonth()+1;return isNaN(m)?NaN:m;}
-// ¿Este gasto trae justificante? La imagen puede estar guardada dentro (antigua) o en el almacén (fotoUrl)
-function tieneFoto(g){return !!(g&&(g.foto||g.fotoUrl));}
-function tieneFotoFijo(g,m){return !!(g&&((g.fotoM&&g.fotoM[m])||(g.fotoUrlM&&g.fotoUrlM[m])));}
-// La imagen del justificante puede estar guardada dentro del dato (antigua) o en el almacén
-function fotoSrc(g){return g?(g.fotoUrl||g.foto||null):null;}
-function fotoRefFijo(g,m){return {foto:(g&&g.fotoM&&g.fotoM[m])||null,fotoUrl:(g&&g.fotoUrlM&&g.fotoUrlM[m])||null};}
-function fotoSrcFijo(g,m){return fotoSrc(fotoRefFijo(g,m));}
+// ¿Este gasto trae justificante? La imagen puede estar dentro del dato (antigua) o en su fichita (fotoRef)
+function tieneFoto(g){return !!(g&&(g.foto||g.fotoRef||g.fotoUrl));}
+function tieneFotoFijo(g,m){return !!(g&&((g.fotoM&&g.fotoM[m])||(g.fotoRefM&&g.fotoRefM[m])||(g.fotoUrlM&&g.fotoUrlM[m])));}
+// La imagen puede estar guardada dentro del dato (antigua) o en su fichita de la nube
+function fotoRefFijo(g,m){return {
+  foto:(g&&g.fotoM&&g.fotoM[m])||null,
+  fotoRef:(g&&g.fotoRefM&&g.fotoRefM[m])||null,
+  fotoUrl:(g&&g.fotoUrlM&&g.fotoUrlM[m])||null};}
 
 // Guardar en la memoria de este aparato. Si el móvil se queda sin sitio, avisa
 // en vez de romperse a mitad y perder el gasto sin decir nada.
@@ -622,7 +623,7 @@ function renderGastos(){
   document.getElementById('tot-c').textContent=fn(totC);
 }
 function toggleG(id){document.getElementById('body-'+id).classList.toggle('open');document.getElementById('arr-'+id).classList.toggle('open');}
-function delGasto(i){if(!confirm('¿Eliminar?'))return;GASTOS_VAR.splice(i,1);guardarLocal('gv5',GASTOS_VAR);renderGastos();renderDashboard();notif('Gasto eliminado');}
+function delGasto(i){if(!confirm('¿Eliminar?'))return;const g=GASTOS_VAR[i];if(g)borrarFoto(g.fotoRef||g.fotoUrl);GASTOS_VAR.splice(i,1);guardarLocal('gv5',GASTOS_VAR);renderGastos();renderDashboard();notif('Gasto eliminado');}
 
 // ═══════════ MODALES ═══════════
 let _gMet='bizum',_gTipo='v',_canal='booking',_iMet='booking/airbnb';
@@ -916,12 +917,12 @@ async function saveBatch(){
     const concepto=(it.parsed.concepto||'').trim();
     if(!fecha||isNaN(importe)||!concepto){skipped++;continue;}
     const gid='v'+Date.now()+Math.random().toString(36).slice(2);
-    const fotoUrl=it.foto?await subirFoto(it.foto,gid):null;
+    const fotoRef=it.foto?await subirFoto(it.foto,gid):null;
     GASTOS_VAR.push({
       id:gid,
       n:concepto,cat:it.parsed.categoria||'otros',fecha,importe,
       metodo:it.parsed.metodo||'bizum',tipo:'v',privado:false,
-      foto:fotoUrl?null:(it.foto||null),fotoUrl:fotoUrl||null,recur:'none'
+      foto:fotoRef?null:(it.foto||null),fotoRef:fotoRef||null,recur:'none'
     });
     added++;
   }
@@ -971,8 +972,8 @@ async function saveGasto(){
     const mes=pdate(fecha).getMonth()+1;
     gf.m[mes]=importe;
     if(_fotoData){
-      const url=await subirFoto(_fotoData,gf.id+'-m'+mes);
-      if(url){gf.fotoUrlM=gf.fotoUrlM||{};gf.fotoUrlM[mes]=url;if(gf.fotoM)delete gf.fotoM[mes];}
+      const ref=await subirFoto(_fotoData,gf.id+'-m'+mes);
+      if(ref){gf.fotoRefM=gf.fotoRefM||{};gf.fotoRefM[mes]=ref;if(gf.fotoM)delete gf.fotoM[mes];}
       else{gf.fotoM=gf.fotoM||{};gf.fotoM[mes]=_fotoData;}
     }
     saveGastosFijos();
@@ -987,11 +988,11 @@ async function saveGasto(){
   if(!fecha||isNaN(importe)||!concepto){alert('Rellena todos los campos');return;}
   const gid=_editId||'v'+Date.now();
   // La foto va al almacén; si no se puede, se queda dentro del dato en este aparato
-  const fotoUrl=_fotoData?await subirFoto(_fotoData,gid):null;
+  const fotoRef=_fotoData?await subirFoto(_fotoData,gid):null;
   // OJO: aquí SIEMPRE se guarda como variable. Si se dejaba tipo 'f' (pasaba al EDITAR
   // con el botón «Fijo» pulsado), la limpieza del arranque lo borraba sin avisar.
   const base={id:gid,n:concepto,cat,fecha,importe,metodo:_gMet,tipo:'v',privado,
-    foto:fotoUrl?null:(_fotoData||null),fotoUrl:fotoUrl||null,recur:_recur};
+    foto:fotoRef?null:(_fotoData||null),fotoRef:fotoRef||null,recur:_recur};
   if(_editId){
     // Edit mode: replace existing
     const idx=GASTOS_VAR.findIndex(g=>g.id===_editId);
@@ -1009,7 +1010,7 @@ async function saveGasto(){
   _editId=null;_fotoData=null;
 }
 
-function editGasto(id){
+async function editGasto(id){
   const g=GASTOS_VAR.find(x=>x.id===id);
   if(!g)return;
   _editId=id;
@@ -1025,9 +1026,10 @@ function editGasto(id){
   document.querySelector(`#mpills-g .mpill[data-m="${g.metodo}"]`)?.classList.add('on');
   _gMet=g.metodo||'bizum';
   if(tieneFoto(g)){
-    _fotoData=fotoSrc(g);
+    // Se guarda la SEÑAL, no la imagen: así al volver a guardar no se sube otra vez
+    _fotoData=g.fotoRef||g.fotoUrl||g.foto;
     const img=document.getElementById('foto-preview');
-    img.src=fotoSrc(g);img.style.display='block';
+    getFotoData(g).then(d=>{if(d){img.src=d;img.style.display='block';}});
     document.querySelector('#photo-drop .photo-lbl').style.display='none';
   }
   const gt=document.querySelector('#mbg-gasto .modal-title');if(gt)gt.textContent='Editar gasto';
@@ -1392,18 +1394,22 @@ function renderGastosByMonth(){
   return html;
 }
 
-function showFoto(id){
+async function showFoto(id){
   const g=GASTOS_VAR.find(x=>x.id===id);
-  if(!g||!fotoSrc(g))return;
+  if(!g||!tieneFoto(g))return;
+  const src=await getFotoData(g);
+  if(!src){notif('No se ha podido abrir el justificante',true);return;}
   const w=window.open('','_blank','width=600,height=400');
-  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${fotoSrc(g)}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
 }
 
-function showFotoFijo(id,m){
+async function showFotoFijo(id,m){
   const g=GASTOS_FIJOS.find(x=>x.id===id);
   if(!g||!tieneFotoFijo(g,m))return;
+  const src=await getFotoData(fotoRefFijo(g,m));
+  if(!src){notif('No se ha podido abrir el justificante',true);return;}
   const w=window.open('','_blank','width=600,height=400');
-  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${fotoSrcFijo(g,m)}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
 }
 
 
@@ -2027,71 +2033,144 @@ const _fb={
 };
 let _db=null,_syncEnabled=false,_syncing=false;
 
-// ── Almacén de justificantes (Firebase Storage) ───────────────────────────
+// ── Almacén de justificantes (fichitas sueltas en Firestore) ──────────────
 // Las fotos NO pueden viajar dentro del paquete de datos: la nube corta a 1 MB por
 // paquete y con 4–8 tickets se pasaba, así que la subida fallaba y dejaba de
-// sincronizarse TODO en silencio. Ahora la imagen vive aparte y el gasto guarda su
-// dirección; el paquete de datos queda ligero y siempre cabe.
-let _storage=null,_stFns=null;
-async function initStorage(app){
-  try{
-    const m=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js');
-    _stFns=m; _storage=m.getStorage(app);
-  }catch(e){console.error('Storage:',e);}
+// sincronizarse TODO en silencio. Ahora cada foto va en SU PROPIA fichita
+// (`justificantes/<id>`), así el paquete de datos queda ligero y siempre cabe.
+// Se usan fichitas y no el almacén de Firebase (Storage) porque Google exige tarjeta
+// para el almacén; esto funciona en el plan gratis (~1 GB ≈ unas 5.000 fotos) y hay un
+// botón para vaciar las de los trimestres ya enviados a la gestora.
+const FOTO_COL='justificantes';
+const MAX_FICHA=700000; // margen de sobra bajo el tope de 1 MB por fichita
+function esRefFoto(v){return typeof v==='string'&&(v.startsWith('fs:')||/^https?:/.test(v));}
+function _dataUrlToImg(d){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=d;});}
+async function _reencode(d,max,q){
+  const img=await _dataUrlToImg(d);
+  let w=img.width,h=img.height;
+  if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  c.getContext('2d').drawImage(img,0,0,w,h);
+  return c.toDataURL('image/jpeg',q);
 }
-// Sube un JPEG y devuelve su dirección. null si no se puede: entonces la foto se queda
-// en este aparato (y el cartel avisa) en vez de tirar abajo la sincronización entera.
+// Si una foto no cabe en su fichita, se encoge hasta que quepa (se ve igual de bien en papel)
+async function encogerParaFicha(d){
+  if(!d||d.length<=MAX_FICHA)return d;
+  let out=d,max=800,q=0.7;
+  for(let i=0;i<4&&out.length>MAX_FICHA;i++){
+    try{out=await _reencode(d,max,q);}catch(e){break;}
+    max-=150;q-=0.15;
+  }
+  return out;
+}
+// Guarda la foto en su fichita y devuelve la señal para encontrarla ('fs:<id>').
+// null si no se puede: entonces la foto se queda en este aparato (y el cartel avisa)
+// en vez de tirar abajo la sincronización entera.
 async function subirFoto(dataUrl,id){
   if(!dataUrl)return null;
-  if(/^https?:/.test(dataUrl))return dataUrl;
-  if(!_storage||!_stFns)return null;
+  if(esRefFoto(dataUrl))return dataUrl; // ya estaba guardada
+  if(!_syncEnabled||!_db)return null;
   try{
-    const r=_stFns.ref(_storage,'justificantes/'+id+'.jpg');
-    await _stFns.uploadString(r,dataUrl,'data_url');
-    return await _stFns.getDownloadURL(r);
-  }catch(e){console.error('Foto no subida:',e);return null;}
+    const img=await encogerParaFicha(dataUrl);
+    if(img.length>MAX_FICHA)throw new Error('la foto sigue siendo demasiado grande');
+    const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(_db,FOTO_COL,id),{img,updated:Date.now()});
+    _fotoCache['fs:'+id]=img;
+    return 'fs:'+id;
+  }catch(e){console.error('Foto no guardada:',e);return null;}
 }
-// Devuelve la imagen como dato incrustable (para el PDF y el ZIP), venga de donde venga
+// Borra la fichita de una foto (al eliminar el gasto o al vaciar trimestres viejos)
+async function borrarFoto(ref){
+  if(!ref||!ref.startsWith('fs:')||!_syncEnabled||!_db)return;
+  try{
+    const {doc,deleteDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(_db,FOTO_COL,ref.slice(3)));
+    delete _fotoCache[ref];
+  }catch(e){console.error('Foto no borrada:',e);}
+}
+// Devuelve la imagen para verla, meterla en el PDF o en el ZIP, venga de donde venga
 const _fotoCache={};
 async function getFotoData(g){
   if(!g)return null;
-  if(g.foto)return g.foto;
-  const u=g.fotoUrl;
+  if(g.foto)return g.foto;                       // aún dentro del dato (sin mudar)
+  const u=g.fotoRef||g.fotoUrl;
   if(!u)return null;
   if(_fotoCache[u])return _fotoCache[u];
   try{
-    const b=await (await fetch(u)).blob();
-    const d=await fileToDataUrl(b);
-    _fotoCache[u]=d;
+    let d=null;
+    if(u.startsWith('fs:')){
+      const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      const snap=await getDoc(doc(_db,FOTO_COL,u.slice(3)));
+      d=snap.exists()?snap.data().img:null;
+    } else {
+      d=await fileToDataUrl(await (await fetch(u)).blob());
+    }
+    if(d)_fotoCache[u]=d;
     return d;
-  }catch(e){console.error('Foto no descargada:',e);return null;}
+  }catch(e){console.error('Foto no recuperada:',e);return null;}
 }
-// Mudanza de una vez: las fotos antiguas guardadas dentro del dato suben al almacén y
-// en su lugar queda la dirección. Se puede repetir sin hacer daño.
+// Mudanza de una vez: las fotos que aún viajan dentro del dato pasan a su fichita.
+// Se puede repetir sin hacer daño.
 async function migrarFotos(){
-  if(!_storage)return;
+  if(!_syncEnabled||!_db)return;
   let n=0,fallos=0;
   for(const g of GASTOS_VAR){
-    if(!g.foto||g.fotoUrl)continue;
-    const url=await subirFoto(g.foto,g.id);
-    if(url){g.fotoUrl=url;delete g.foto;n++;}else fallos++;
+    if(!g.foto||g.fotoRef)continue;
+    const ref=await subirFoto(g.foto,g.id);
+    if(ref){g.fotoRef=ref;delete g.foto;delete g.fotoUrl;n++;}else fallos++;
   }
   for(const g of GASTOS_FIJOS){
     if(!g.fotoM)continue;
     for(const m of Object.keys(g.fotoM)){
       const d=g.fotoM[m];
-      if(!d||/^https?:/.test(d))continue;
-      const url=await subirFoto(d,g.id+'-m'+m);
-      if(url){g.fotoUrlM=g.fotoUrlM||{};g.fotoUrlM[m]=url;delete g.fotoM[m];n++;}else fallos++;
+      if(!d||esRefFoto(d))continue;
+      const ref=await subirFoto(d,g.id+'-m'+m);
+      if(ref){g.fotoRefM=g.fotoRefM||{};g.fotoRefM[m]=ref;delete g.fotoM[m];n++;}else fallos++;
     }
     if(g.fotoM&&!Object.keys(g.fotoM).length)delete g.fotoM;
   }
-  if(n){guardarLocal('gv5',GASTOS_VAR);guardarLocal('gf6',GASTOS_FIJOS);notif(n+' justificante(s) guardados en el almacén');}
-  if(fallos)avisoNube(fallos+' foto(s) no han podido subir al almacén: por ahora solo están en este aparato.');
+  if(n){guardarLocal('gv5',GASTOS_VAR);guardarLocal('gf6',GASTOS_FIJOS);notif(n+' justificante(s) guardados en la nube');}
+  if(fallos)avisoNube(fallos+' foto(s) no se han podido guardar en la nube: por ahora solo están en este aparato.');
 }
 // Lo que viaja a la nube va SIN imágenes dentro
 function sinFotos(arr){return (arr||[]).map(g=>{if(!g||!g.foto)return g;const c={...g};delete c.foto;return c;});}
 function sinFotosFijos(arr){return (arr||[]).map(g=>{if(!g||!g.fotoM)return g;const c={...g};delete c.fotoM;return c;});}
+
+// ── Vaciar fotos de trimestres ya enviados a la gestora ───────────────────
+// Cuando el ZIP de justificantes ya está en manos de Ester, esas fotos no hacen falta
+// en la app. Se borran SOLO las imágenes: el gasto, su importe y su fecha se quedan.
+function _ultimoDiaMes(m){return `2026-${String(m).padStart(2,'0')}-${new Date(2026,m,0).getDate()}`;}
+async function vaciarFotosAntiguas(){
+  const hoy=new Date();
+  const sug=`01/${String(hoy.getMonth()+1).padStart(2,'0')}/${hoy.getFullYear()}`;
+  const txt=prompt('Borrar las FOTOS de los gastos anteriores a esta fecha.\nLos gastos, importes y fechas NO se tocan.\n\nEscribe la fecha (día/mes/año):',sug);
+  if(!txt)return;
+  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(txt.trim());
+  if(!m){alert('La fecha tiene que ir como 30/06/2026');return;}
+  const corte=`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  const vars=GASTOS_VAR.filter(g=>tieneFoto(g)&&g.fecha&&g.fecha<corte);
+  const fijos=[];
+  GASTOS_FIJOS.forEach(g=>{for(let mm=1;mm<=12;mm++){if(tieneFotoFijo(g,mm)&&_ultimoDiaMes(mm)<corte)fijos.push({g,mm});}});
+  const total=vars.length+fijos.length;
+  if(!total){notif('No hay fotos anteriores al '+fdate(corte));return;}
+  if(!confirm(`Se van a borrar ${total} foto(s) de antes del ${fdate(corte)}.\n\nLos gastos y sus importes se quedan como están.\nAsegúrate de haber bajado ya el ZIP de justificantes.\n\n¿Seguro?`))return;
+  for(const g of vars){
+    await borrarFoto(g.fotoRef||g.fotoUrl);
+    delete g.foto;delete g.fotoRef;delete g.fotoUrl;
+  }
+  for(const {g,mm} of fijos){
+    await borrarFoto((g.fotoRefM&&g.fotoRefM[mm])||(g.fotoUrlM&&g.fotoUrlM[mm]));
+    if(g.fotoM)delete g.fotoM[mm];
+    if(g.fotoRefM)delete g.fotoRefM[mm];
+    if(g.fotoUrlM)delete g.fotoUrlM[mm];
+  }
+  guardarLocal('gv5',GASTOS_VAR);
+  guardarLocal('gf6',GASTOS_FIJOS);
+  renderDashboard();
+  if(document.getElementById('page-gastos').classList.contains('on'))renderGastos();
+  if(document.getElementById('page-informe').classList.contains('on'))renderInforme();
+  notif(total+' foto(s) borradas · los gastos siguen ahí');
+}
 
 // ── Juntar en vez de machacar ─────────────────────────────────────────────
 // Antes, cada bajada de la nube sustituía la lista entera: un gasto guardado en el móvil
@@ -2108,7 +2187,7 @@ function juntarFijos(cloudArr,localArr){
     if(!l||!l.fotoM)return g;
     const faltan={};
     Object.keys(l.fotoM).forEach(m=>{
-      const yaEnNube=(g.fotoM&&g.fotoM[m])||(g.fotoUrlM&&g.fotoUrlM[m]);
+      const yaEnNube=(g.fotoM&&g.fotoM[m])||(g.fotoRefM&&g.fotoRefM[m])||(g.fotoUrlM&&g.fotoUrlM[m]);
       if(l.fotoM[m]&&!yaEnNube)faltan[m]=l.fotoM[m];
     });
     return Object.keys(faltan).length?{...g,fotoM:{...(g.fotoM||{}),...faltan}}:g;
@@ -2123,7 +2202,7 @@ function juntarPorId(k,cloudArr,localArr){
   // Si la nube trae el dato pero la foto sigue solo aquí, la foto no se pierde
   const fusion=cloud.map(x=>{
     const l=x&&porId[x.id];
-    return (l&&l.foto&&!x.foto&&!x.fotoUrl)?{...x,foto:l.foto}:x;
+    return (l&&l.foto&&!x.foto&&!x.fotoRef&&!x.fotoUrl)?{...x,foto:l.foto}:x;
   });
   const propios=locales.filter(x=>x&&pend.includes(x.id)&&!idsCloud.has(x.id));
   localStorage.setItem('pend_'+k,JSON.stringify(pend.filter(id=>!idsCloud.has(id))));
@@ -2184,7 +2263,6 @@ async function initFirebase(){
     const app=initializeApp(_fb);
     _db=getFirestore(app);
     await initAuth(app);
-    await initStorage(app);
     _syncEnabled=true;
     const sd=document.getElementById('sync-dot');
     if(sd){sd.style.display='inline-block';sd.style.background='var(--gold)';}

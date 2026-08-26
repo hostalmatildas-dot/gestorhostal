@@ -241,6 +241,7 @@
         PDF
       </button>
       <button class="exp-btn" onclick="exportJustificantes()" title="Descargar todas las fotos de tickets y facturas del trimestre, listas para la carpeta de la gestora">📎 Justificantes</button>
+      <button class="exp-btn" onclick="vaciarFotosAntiguas()" title="Borrar las fotos de trimestres ya enviados a la gestora. Los gastos y sus importes NO se tocan.">🧹 Vaciar fotos viejas</button>
       <button class="exp-btn" onclick="backupExport()" title="Descargar TODOS los datos en un archivo (copia de seguridad)">💾 Copia</button>
       <button class="exp-btn" onclick="document.getElementById('backup-file').click()" title="Restaurar los datos desde una copia descargada">↩ Restaurar</button>
       <input type="file" id="backup-file" accept=".json,application/json" style="display:none" onchange="backupImport(this)">
