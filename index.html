@@ -31,6 +31,9 @@
 </head>
 <body>
 <div class="notif" id="notif"></div>
+<!-- Cartel fijo cuando la nube no está guardando. Antes el fallo se tragaba en silencio
+     y se seguían metiendo tickets creyendo que subían. -->
+<div id="sync-warn" class="sync-warn" style="display:none" onclick="this.style.display='none'"></div>
 
 <header class="topbar">
   <div class="logo">Hostal Matilda's <span>· Contabilidad 2026</span> <span id="sync-dot" style="display:none;width:7px;height:7px;background:var(--green);border-radius:50%;display:none;vertical-align:middle;margin-left:4px" title="Sincronizado con la nube"></span></div>

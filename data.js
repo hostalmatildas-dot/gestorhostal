@@ -138,7 +138,7 @@ function loadGastosFijos(){
   }), ...userAdded];
 }
 let GASTOS_FIJOS=loadGastosFijos();
-function saveGastosFijos(){localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));}
+function saveGastosFijos(){guardarLocal('gf6',GASTOS_FIJOS);}
 
 // GASTOS VARIABLES — fuente: gastos_1t.xlsx
 // Eliminados: persianas, reembolso IONOS, batidora Carrefour 36€, cuota comunidad (está en fijos), luz (en fijos)

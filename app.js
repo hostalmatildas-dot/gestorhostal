@@ -44,6 +44,38 @@ function fdate(s){const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||''));return 
 function gMes(g){const m=pdate(String((g&&g.fecha)||'').slice(0,10)).getMonth()+1;return isNaN(m)?NaN:m;}
 // ¿Este gasto trae justificante? La imagen puede estar guardada dentro (antigua) o en el almacén (fotoUrl)
 function tieneFoto(g){return !!(g&&(g.foto||g.fotoUrl));}
+function tieneFotoFijo(g,m){return !!(g&&((g.fotoM&&g.fotoM[m])||(g.fotoUrlM&&g.fotoUrlM[m])));}
+// La imagen del justificante puede estar guardada dentro del dato (antigua) o en el almacén
+function fotoSrc(g){return g?(g.fotoUrl||g.foto||null):null;}
+function fotoRefFijo(g,m){return {foto:(g&&g.fotoM&&g.fotoM[m])||null,fotoUrl:(g&&g.fotoUrlM&&g.fotoUrlM[m])||null};}
+function fotoSrcFijo(g,m){return fotoSrc(fotoRefFijo(g,m));}
+
+// Guardar en la memoria de este aparato. Si el móvil se queda sin sitio, avisa
+// en vez de romperse a mitad y perder el gasto sin decir nada.
+function guardarLocal(k,v){
+  try{localStorage.setItem(k,JSON.stringify(v));return true;}
+  catch(e){
+    console.error('localStorage:',e);
+    avisoNube('Este aparato se ha quedado sin espacio: el último cambio puede no haberse guardado.');
+    return false;
+  }
+}
+// Cartel rojo fijo arriba. Antes los fallos de la nube se tragaban en silencio y
+// la usuaria seguía metiendo tickets creyendo que subían.
+function avisoNube(msg){
+  const el=document.getElementById('sync-warn');
+  if(!el)return;
+  el.textContent='⚠️ '+msg;
+  el.style.display='block';
+  const sd=document.getElementById('sync-dot');
+  if(sd){sd.style.display='inline-block';sd.style.background='var(--red)';}
+}
+function okNube(){
+  const el=document.getElementById('sync-warn');
+  if(el)el.style.display='none';
+  const sd=document.getElementById('sync-dot');
+  if(sd){sd.style.display='inline-block';sd.style.background='var(--green)';}
+}
 // Mes de entrada de la reserva (solo para listados; el dinero se imputa con impMes)
 function getMes(r){return pdate(r.ci).getMonth()+1;}
 
@@ -590,7 +622,7 @@ function renderGastos(){
   document.getElementById('tot-c').textContent=fn(totC);
 }
 function toggleG(id){document.getElementById('body-'+id).classList.toggle('open');document.getElementById('arr-'+id).classList.toggle('open');}
-function delGasto(i){if(!confirm('¿Eliminar?'))return;GASTOS_VAR.splice(i,1);localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));renderGastos();renderDashboard();notif('Gasto eliminado');}
+function delGasto(i){if(!confirm('¿Eliminar?'))return;GASTOS_VAR.splice(i,1);guardarLocal('gv5',GASTOS_VAR);renderGastos();renderDashboard();notif('Gasto eliminado');}
 
 // ═══════════ MODALES ═══════════
 let _gMet='bizum',_gTipo='v',_canal='booking',_iMet='booking/airbnb';
@@ -876,21 +908,24 @@ function showBatchFoto(i){
   const w=window.open('','_blank');
   w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${it.foto}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
 }
-function saveBatch(){
+async function saveBatch(){
   let added=0,skipped=0;
-  _batch.filter(it=>it.incluir).forEach(it=>{
+  for(const it of _batch.filter(x=>x.incluir)){
     const fecha=it.parsed.fecha;
     const importe=parseFloat(it.parsed.importe);
     const concepto=(it.parsed.concepto||'').trim();
-    if(!fecha||isNaN(importe)||!concepto){skipped++;return;}
+    if(!fecha||isNaN(importe)||!concepto){skipped++;continue;}
+    const gid='v'+Date.now()+Math.random().toString(36).slice(2);
+    const fotoUrl=it.foto?await subirFoto(it.foto,gid):null;
     GASTOS_VAR.push({
-      id:'v'+Date.now()+Math.random().toString(36).slice(2),
+      id:gid,
       n:concepto,cat:it.parsed.categoria||'otros',fecha,importe,
-      metodo:it.parsed.metodo||'bizum',tipo:'v',privado:false,foto:it.foto||null,recur:'none'
+      metodo:it.parsed.metodo||'bizum',tipo:'v',privado:false,
+      foto:fotoUrl?null:(it.foto||null),fotoUrl:fotoUrl||null,recur:'none'
     });
     added++;
-  });
-  localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));
+  }
+  guardarLocal('gv5',GASTOS_VAR);
   closeModals();
   if(document.getElementById('page-gastos').classList.contains('on'))renderGastos();
   renderDashboard();
@@ -917,7 +952,7 @@ function expandRecur(base, recur, desde, hasta){
   return entries;
 }
 
-function saveGasto(){
+async function saveGasto(){
   const fecha=document.getElementById('g-fecha').value;
   const importe=parseFloat(document.getElementById('g-imp').value);
   const concepto=document.getElementById('g-con').value.trim();
@@ -935,7 +970,11 @@ function saveGasto(){
     if(!gf){alert('Gasto fijo no encontrado');return;}
     const mes=pdate(fecha).getMonth()+1;
     gf.m[mes]=importe;
-    if(_fotoData){gf.fotoM=gf.fotoM||{};gf.fotoM[mes]=_fotoData;}
+    if(_fotoData){
+      const url=await subirFoto(_fotoData,gf.id+'-m'+mes);
+      if(url){gf.fotoUrlM=gf.fotoUrlM||{};gf.fotoUrlM[mes]=url;if(gf.fotoM)delete gf.fotoM[mes];}
+      else{gf.fotoM=gf.fotoM||{};gf.fotoM[mes]=_fotoData;}
+    }
     saveGastosFijos();
     closeModals();
     if(document.getElementById('page-gastos').classList.contains('on'))renderGastos();
@@ -946,7 +985,13 @@ function saveGasto(){
     return;
   }
   if(!fecha||isNaN(importe)||!concepto){alert('Rellena todos los campos');return;}
-  const base={id:_editId||'v'+Date.now(),n:concepto,cat,fecha,importe,metodo:_gMet,tipo:_gTipo,privado,foto:_fotoData||null,recur:_recur};
+  const gid=_editId||'v'+Date.now();
+  // La foto va al almacén; si no se puede, se queda dentro del dato en este aparato
+  const fotoUrl=_fotoData?await subirFoto(_fotoData,gid):null;
+  // OJO: aquí SIEMPRE se guarda como variable. Si se dejaba tipo 'f' (pasaba al EDITAR
+  // con el botón «Fijo» pulsado), la limpieza del arranque lo borraba sin avisar.
+  const base={id:gid,n:concepto,cat,fecha,importe,metodo:_gMet,tipo:'v',privado,
+    foto:fotoUrl?null:(_fotoData||null),fotoUrl:fotoUrl||null,recur:_recur};
   if(_editId){
     // Edit mode: replace existing
     const idx=GASTOS_VAR.findIndex(g=>g.id===_editId);
@@ -956,7 +1001,7 @@ function saveGasto(){
     const entries=expandRecur(base,_recur,desde,hasta);
     GASTOS_VAR.push(...entries);
   }
-  localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));
+  guardarLocal('gv5',GASTOS_VAR);
   closeModals();
   if(document.getElementById('page-gastos').classList.contains('on'))renderGastos();
   renderDashboard();
@@ -979,10 +1024,10 @@ function editGasto(id){
   document.querySelectorAll('#mpills-g .mpill').forEach(p=>p.classList.remove('on'));
   document.querySelector(`#mpills-g .mpill[data-m="${g.metodo}"]`)?.classList.add('on');
   _gMet=g.metodo||'bizum';
-  if(g.foto){
-    _fotoData=g.foto;
+  if(tieneFoto(g)){
+    _fotoData=fotoSrc(g);
     const img=document.getElementById('foto-preview');
-    img.src=g.foto;img.style.display='block';
+    img.src=fotoSrc(g);img.style.display='block';
     document.querySelector('#photo-drop .photo-lbl').style.display='none';
   }
   const gt=document.querySelector('#mbg-gasto .modal-title');if(gt)gt.textContent='Editar gasto';
@@ -994,7 +1039,7 @@ function delIngreso(id){
   const idx=RESERVAS_EXTRA.findIndex(x=>x.id===id);
   if(idx>-1) RESERVAS_EXTRA.splice(idx,1);
   RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
-  localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+  guardarLocal('ing_extra',RESERVAS_EXTRA);
   renderHabs(); renderDashboard();
   notif('Ingreso eliminado');
 }
@@ -1065,7 +1110,7 @@ function saveIngreso(){
       const idx=RESERVAS_EXTRA.findIndex(x=>x.id===_editIngId);
       if(idx>-1)RESERVAS_EXTRA[idx]=r; else RESERVAS_EXTRA.push(r);
       RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
-      localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+      guardarLocal('ing_extra',RESERVAS_EXTRA);
       closeModals();renderDashboard();
       if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
       notif('Ingreso actualizado'+(privado&&!IS_REAL?' · activa modo REAL para verlo':''));
@@ -1076,7 +1121,7 @@ function saveIngreso(){
   }
   RESERVAS_EXTRA.push(...toAdd);
   RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
-  localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+  guardarLocal('ing_extra',RESERVAS_EXTRA);
   closeModals();
   renderDashboard();
   if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
@@ -1236,7 +1281,7 @@ function importSelectedRecon(){
     added++;
   });
   RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
-  localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));
+  guardarLocal('ing_extra',RESERVAS_EXTRA);
   closeModals();renderDashboard();
   if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
   const parts=[];
@@ -1349,16 +1394,16 @@ function renderGastosByMonth(){
 
 function showFoto(id){
   const g=GASTOS_VAR.find(x=>x.id===id);
-  if(!g||!g.foto)return;
+  if(!g||!fotoSrc(g))return;
   const w=window.open('','_blank','width=600,height=400');
-  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${g.foto}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${fotoSrc(g)}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
 }
 
 function showFotoFijo(id,m){
   const g=GASTOS_FIJOS.find(x=>x.id===id);
-  if(!g||!g.fotoM||!g.fotoM[m])return;
+  if(!g||!tieneFotoFijo(g,m))return;
   const w=window.open('','_blank','width=600,height=400');
-  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${g.fotoM[m]}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${fotoSrcFijo(g,m)}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
 }
 
 
@@ -1464,7 +1509,7 @@ function renderInforme(){
   h+=`<tr class="tot"><td style="padding-left:12px;font-size:10px">↳ comisiones OTA</td>${Q1m.map(m=>`<td class="neg dim">${Math.abs(comTotal([m]))?fn(Math.abs(comTotal([m]))):''}</td>`).join('')}<td class="neg">${cA?fn(cA):''}</td></tr>`;
   h+=`<tr class="tot" style="background:var(--green-bg)"><td style="color:var(--green)">INGRESOS NETOS</td>${Q1m.map(m=>`<td class="pos">${fn0(ingTotal([m],'neto'))}</td>`).join('')}<td class="pos">${fn0(inT)}</td></tr>`;
   h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS FIJOS</td></tr>`;
-  visibleGastosFijos().forEach(g=>{const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);h+=`<tr><td>${g.n}</td>${Q1m.map(m=>`<td class="${g.m[m]?'neg':''}">${g.m[m]?fn(g.m[m]):''}${g.fotoM&&g.fotoM[m]?` <span style="font-size:9px;cursor:pointer;color:var(--gold)" onclick="showFotoFijo('${g.id}',${m})" title="Ver justificante">📷</span>`:''}</td>`).join('')}<td class="neg">${tot?fn(tot):''}</td></tr>`;});
+  visibleGastosFijos().forEach(g=>{const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);h+=`<tr><td>${g.n}</td>${Q1m.map(m=>`<td class="${g.m[m]?'neg':''}">${g.m[m]?fn(g.m[m]):''}${tieneFotoFijo(g,m)?` <span style="font-size:9px;cursor:pointer;color:var(--gold)" onclick="showFotoFijo('${g.id}',${m})" title="Ver justificante">📷</span>`:''}</td>`).join('')}<td class="neg">${tot?fn(tot):''}</td></tr>`;});
   const gfT=gFijo(Q1m);  // uses visibleGastosFijos() internally
   h+=`<tr class="tot"><td>SUBTOTAL GASTOS FIJOS</td>${Q1m.map(m=>`<td class="neg">${fn(gFijo([m]))}</td>`).join('')}<td class="neg">${fn(gfT)}</td></tr>`;
   h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS VARIABLES</td></tr>`;
@@ -1603,7 +1648,7 @@ function delFijo(id){
   if(g.sys){
     const deleted=sj('gf_deleted',[]);
     if(!deleted.includes(id)) deleted.push(id);
-    localStorage.setItem('gf_deleted',JSON.stringify(deleted));
+    guardarLocal('gf_deleted',deleted);
   }
   const idx=GASTOS_FIJOS.findIndex(x=>x.id===id);
   if(idx>-1) GASTOS_FIJOS.splice(idx,1);
@@ -1808,10 +1853,10 @@ async function exportPDF(){
 
     // JUSTIFICANTES — new page with photos (variables + fijos, ordenados por mes)
     const gastosFoto=[
-      ...visibleGastosVar().filter(g=>g.foto&&Q1m.includes(pdate(g.fecha).getMonth()+1))
-        .map(g=>({mes:pdate(g.fecha).getMonth()+1,n:g.n,fecha:g.fecha,importe:g.importe,foto:g.foto})),
-      ...visibleGastosFijos().flatMap(g=>Q1m.filter(m=>g.fotoM&&g.fotoM[m])
-        .map(m=>({mes:m,n:g.n+' (fijo)',fecha:MN[m]+' 2026',importe:g.m[m]||0,foto:g.fotoM[m]})))
+      ...visibleGastosVar().filter(g=>tieneFoto(g)&&Q1m.includes(gMes(g)))
+        .map(g=>({mes:gMes(g),n:g.n,fecha:g.fecha,importe:g.importe,ref:g})),
+      ...visibleGastosFijos().flatMap(g=>Q1m.filter(m=>tieneFotoFijo(g,m))
+        .map(m=>({mes:m,n:g.n+' (fijo)',fecha:MN[m]+' 2026',importe:g.m[m]||0,ref:fotoRefFijo(g,m)})))
     ].sort((a,b)=>a.mes-b.mes);
     if(gastosFoto.length){
       doc.addPage();
@@ -1832,15 +1877,16 @@ async function exportPDF(){
         doc.text(jLines,M,jy);
         jy+=jLines.length*3.6+1;
         try{
-          if(g.foto&&(g.foto.startsWith('data:image')||g.foto.startsWith('data:application/octet'))){
-            const imgType=g.foto.includes('jpeg')?'JPEG':'PNG';
+          const foto=await getFotoData(g.ref);
+          if(foto&&(foto.startsWith('data:image')||foto.startsWith('data:application/octet'))){
+            const imgType=foto.includes('jpeg')?'JPEG':'PNG';
             // Escala manteniendo proporción dentro de una caja máx. 80×90 mm
             const maxW=80,maxH=90;let iw=maxW,ih=maxH;
-            try{const p=doc.getImageProperties(g.foto);const r=Math.min(maxW/p.width,maxH/p.height);iw=p.width*r;ih=p.height*r;}catch(_){ih=60;}
+            try{const p=doc.getImageProperties(foto);const r=Math.min(maxW/p.width,maxH/p.height);iw=p.width*r;ih=p.height*r;}catch(_){ih=60;}
             if(jy+ih>HOJA-12){doc.addPage();jy=15;}
-            doc.addImage(g.foto,imgType,M,jy,iw,ih,'','FAST');
+            doc.addImage(foto,imgType,M,jy,iw,ih,'','FAST');
             jy+=ih+5;
-          } else if(g.foto.startsWith('data:application/pdf')){
+          } else if(foto&&foto.startsWith('data:application/pdf')){
             doc.setFontSize(8);
             doc.setTextColor(154,150,144);
             doc.text('[Adjunto PDF — ver archivo original]',M,jy+5);
@@ -1874,14 +1920,14 @@ function justificantesPeriodo(){
   const tri=P.slug.replace('q','T').toUpperCase();
   const out=[];
   visibleGastosVar().forEach(g=>{
-    const m=pdate(g.fecha).getMonth()+1;
-    if(g.foto&&Q1m.includes(m))
-      out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_${g.fecha}.jpg`,data:g.foto});
+    const m=gMes(g);
+    if(tieneFoto(g)&&Q1m.includes(m))
+      out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_${g.fecha}.jpg`,ref:g});
   });
   visibleGastosFijos().forEach(g=>{
     Q1m.forEach(m=>{
-      if(g.fotoM&&g.fotoM[m])
-        out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_fijo.jpg`,data:g.fotoM[m]});
+      if(tieneFotoFijo(g,m))
+        out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_fijo.jpg`,ref:fotoRefFijo(g,m)});
     });
   });
   return out.sort((a,b)=>a.mes-b.mes);
@@ -1902,10 +1948,11 @@ async function exportJustificantes(){
       });
     }
     const zip=new window.JSZip();
-    items.forEach(it=>{
+    for(const it of items){
+      it.data=await getFotoData(it.ref);
       const b64=(it.data||'').split(',')[1];
       if(b64)zip.file(it.name,b64,{base64:true});
-    });
+    }
     const blob=await zip.generateAsync({type:'blob'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
@@ -1915,8 +1962,10 @@ async function exportJustificantes(){
     notif(items.length+' justificantes descargados ✓');
   }catch(e){
     // Sin ZIP (p. ej. sin conexión): se bajan de una en una
-    items.forEach((it,i)=>setTimeout(()=>{
-      const a=document.createElement('a');a.href=it.data;a.download=it.name;a.click();
+    items.forEach((it,i)=>setTimeout(async()=>{
+      const src=it.data||await getFotoData(it.ref);
+      if(!src)return;
+      const a=document.createElement('a');a.href=src;a.download=it.name;a.click();
     },i*400));
     notif('Descargando '+items.length+' fotos una a una');
   }
@@ -1945,10 +1994,10 @@ function backupImport(inp){
       if(!d||typeof d!=='object'||(!Array.isArray(d.ing_extra)&&!Array.isArray(d.gv5)&&!Array.isArray(d.gf6)))
         throw new Error('el archivo no parece una copia del gestor');
       if(!confirm('¿Reemplazar los datos actuales con la copia del '+((d.fecha||'').slice(0,10)||'¿?')+'? El cambio también se sincroniza a los demás dispositivos.'))return;
-      if(Array.isArray(d.gf_deleted))localStorage.setItem('gf_deleted',JSON.stringify(d.gf_deleted));
-      if(Array.isArray(d.ing_extra)){RESERVAS_EXTRA=d.ing_extra;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));}
-      if(Array.isArray(d.gv5)){GASTOS_VAR=d.gv5;localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));}
-      if(Array.isArray(d.gf6)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));}
+      if(Array.isArray(d.gf_deleted))guardarLocal('gf_deleted',d.gf_deleted);
+      if(Array.isArray(d.ing_extra)){RESERVAS_EXTRA=d.ing_extra;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
+      if(Array.isArray(d.gv5)){GASTOS_VAR=d.gv5;guardarLocal('gv5',GASTOS_VAR);}
+      if(Array.isArray(d.gf6)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);guardarLocal('gf6',GASTOS_FIJOS);}
       renderDashboard();renderGastos();
       notif('Copia restaurada');
     }catch(e){notif('No se pudo importar: '+e.message,true);}
@@ -1977,6 +2026,93 @@ const _fb={
   appId:"1:757250291767:web:c0de75a7a70b7ff875e7b2"
 };
 let _db=null,_syncEnabled=false,_syncing=false;
+
+// ── Almacén de justificantes (Firebase Storage) ───────────────────────────
+// Las fotos NO pueden viajar dentro del paquete de datos: la nube corta a 1 MB por
+// paquete y con 4–8 tickets se pasaba, así que la subida fallaba y dejaba de
+// sincronizarse TODO en silencio. Ahora la imagen vive aparte y el gasto guarda su
+// dirección; el paquete de datos queda ligero y siempre cabe.
+let _storage=null,_stFns=null;
+async function initStorage(app){
+  try{
+    const m=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js');
+    _stFns=m; _storage=m.getStorage(app);
+  }catch(e){console.error('Storage:',e);}
+}
+// Sube un JPEG y devuelve su dirección. null si no se puede: entonces la foto se queda
+// en este aparato (y el cartel avisa) en vez de tirar abajo la sincronización entera.
+async function subirFoto(dataUrl,id){
+  if(!dataUrl)return null;
+  if(/^https?:/.test(dataUrl))return dataUrl;
+  if(!_storage||!_stFns)return null;
+  try{
+    const r=_stFns.ref(_storage,'justificantes/'+id+'.jpg');
+    await _stFns.uploadString(r,dataUrl,'data_url');
+    return await _stFns.getDownloadURL(r);
+  }catch(e){console.error('Foto no subida:',e);return null;}
+}
+// Devuelve la imagen como dato incrustable (para el PDF y el ZIP), venga de donde venga
+const _fotoCache={};
+async function getFotoData(g){
+  if(!g)return null;
+  if(g.foto)return g.foto;
+  const u=g.fotoUrl;
+  if(!u)return null;
+  if(_fotoCache[u])return _fotoCache[u];
+  try{
+    const b=await (await fetch(u)).blob();
+    const d=await fileToDataUrl(b);
+    _fotoCache[u]=d;
+    return d;
+  }catch(e){console.error('Foto no descargada:',e);return null;}
+}
+// Mudanza de una vez: las fotos antiguas guardadas dentro del dato suben al almacén y
+// en su lugar queda la dirección. Se puede repetir sin hacer daño.
+async function migrarFotos(){
+  if(!_storage)return;
+  let n=0,fallos=0;
+  for(const g of GASTOS_VAR){
+    if(!g.foto||g.fotoUrl)continue;
+    const url=await subirFoto(g.foto,g.id);
+    if(url){g.fotoUrl=url;delete g.foto;n++;}else fallos++;
+  }
+  for(const g of GASTOS_FIJOS){
+    if(!g.fotoM)continue;
+    for(const m of Object.keys(g.fotoM)){
+      const d=g.fotoM[m];
+      if(!d||/^https?:/.test(d))continue;
+      const url=await subirFoto(d,g.id+'-m'+m);
+      if(url){g.fotoUrlM=g.fotoUrlM||{};g.fotoUrlM[m]=url;delete g.fotoM[m];n++;}else fallos++;
+    }
+    if(g.fotoM&&!Object.keys(g.fotoM).length)delete g.fotoM;
+  }
+  if(n){guardarLocal('gv5',GASTOS_VAR);guardarLocal('gf6',GASTOS_FIJOS);notif(n+' justificante(s) guardados en el almacén');}
+  if(fallos)avisoNube(fallos+' foto(s) no han podido subir al almacén: por ahora solo están en este aparato.');
+}
+// Lo que viaja a la nube va SIN imágenes dentro
+function sinFotos(arr){return (arr||[]).map(g=>{if(!g||!g.foto)return g;const c={...g};delete c.foto;return c;});}
+function sinFotosFijos(arr){return (arr||[]).map(g=>{if(!g||!g.fotoM)return g;const c={...g};delete c.fotoM;return c;});}
+
+// ── Juntar en vez de machacar ─────────────────────────────────────────────
+// Antes, cada bajada de la nube sustituía la lista entera: un gasto guardado en el móvil
+// que aún no había llegado a subir se borraba solo a los 5 minutos. Ahora se juntan por id:
+// manda la nube, pero lo que este aparato guardó y todavía no subió se conserva.
+function _pend(k){return sj('pend_'+k,[]);}
+function juntarPorId(k,cloudArr,localArr){
+  const cloud=Array.isArray(cloudArr)?cloudArr:[];
+  const idsCloud=new Set(cloud.map(x=>x&&x.id));
+  const pend=_pend(k);
+  const locales=Array.isArray(localArr)?localArr:[];
+  const porId={}; locales.forEach(x=>{if(x&&x.id)porId[x.id]=x;});
+  // Si la nube trae el dato pero la foto sigue solo aquí, la foto no se pierde
+  const fusion=cloud.map(x=>{
+    const l=x&&porId[x.id];
+    return (l&&l.foto&&!x.foto&&!x.fotoUrl)?{...x,foto:l.foto}:x;
+  });
+  const propios=locales.filter(x=>x&&pend.includes(x.id)&&!idsCloud.has(x.id));
+  localStorage.setItem('pend_'+k,JSON.stringify(pend.filter(id=>!idsCloud.has(id))));
+  return fusion.concat(propios);
+}
 
 // ── Login de sincronización ──
 // Mientras las reglas de Firestore estén abiertas no se pide nada.
@@ -2032,6 +2168,7 @@ async function initFirebase(){
     const app=initializeApp(_fb);
     _db=getFirestore(app);
     await initAuth(app);
+    await initStorage(app);
     _syncEnabled=true;
     const sd=document.getElementById('sync-dot');
     if(sd){sd.style.display='inline-block';sd.style.background='var(--gold)';}
@@ -2053,14 +2190,16 @@ async function initFirebase(){
     if(snap.exists()){
       _syncing=true;
       const d=snap.data();
-      if(d.ing_extra){RESERVAS_EXTRA=d.ing_extra;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));}
-      if(d.gv5){GASTOS_VAR=d.gv5;localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));}
-      if(d.gf6){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));}
+      if(d.ing_extra){RESERVAS_EXTRA=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
+      if(d.gv5){GASTOS_VAR=juntarPorId('gv5',d.gv5,GASTOS_VAR);guardarLocal('gv5',GASTOS_VAR);}
+      if(d.gf6){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);guardarLocal('gf6',GASTOS_FIJOS);}
       _syncing=false;
       cleanupInventedData();
     }
     renderDashboard();
-    if(sd)sd.style.background='var(--green)';
+    okNube();
+    // Mudar al almacén las fotos viejas que aún viajan dentro del paquete de datos
+    migrarFotos().then(()=>syncToFirebase());
 
     // POLLING every 15s instead of onSnapshot (works with all browsers/blockers)
     async function pollFirebase(){
@@ -2073,9 +2212,9 @@ async function initFirebase(){
         if(d.writtenBy===_deviceId)return; // our own write, skip
         _syncing=true;
         let changed=false;
-        if(d.ing_extra&&JSON.stringify(d.ing_extra)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=d.ing_extra;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];localStorage.setItem('ing_extra',JSON.stringify(RESERVAS_EXTRA));changed=true;}
-        if(d.gv5&&JSON.stringify(d.gv5)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=d.gv5;localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));changed=true;}
-        if(d.gf6&&JSON.stringify(d.gf6)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);localStorage.setItem('gf6',JSON.stringify(GASTOS_FIJOS));changed=true;}
+        if(d.ing_extra){const nx=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);if(JSON.stringify(nx)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=nx;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);changed=true;}}
+        if(d.gv5){const nx=juntarPorId('gv5',d.gv5,GASTOS_VAR);if(JSON.stringify(nx)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=nx;guardarLocal('gv5',GASTOS_VAR);changed=true;}}
+        if(d.gf6&&JSON.stringify(d.gf6)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);guardarLocal('gf6',GASTOS_FIJOS);changed=true;}
         _syncing=false;
         cleanupInventedData();
         if(changed){
@@ -2099,7 +2238,9 @@ async function initFirebase(){
     _syncEnabled=false;
     const sd=document.getElementById('sync-dot');
     if(sd){sd.style.display='inline-block';sd.style.background='var(--red)';sd.title='Sin sincronizar';}
-    if(e&&e.code==='permission-denied')notif('Sin login: los cambios se quedan solo en este dispositivo',true);
+    avisoNube(e&&e.code==='permission-denied'
+      ? 'No has iniciado sesión: lo que guardes se queda SOLO en este aparato. Recarga la página y pon tu contraseña.'
+      : 'No hay conexión con la nube: lo que guardes se queda SOLO en este aparato.');
     renderDashboard();
   }
 }
@@ -2111,15 +2252,32 @@ async function syncToFirebase(){
     const ts=Date.now();
     const deviceId=localStorage.getItem('_deviceId')||'unknown';
     localStorage.setItem('_lastSync',String(ts));
-    await setDoc(doc(_db,'hostal','datos'),{
-      ing_extra:RESERVAS_EXTRA,
-      gv5:GASTOS_VAR,
-      gf6:GASTOS_FIJOS,
+    const paquete={
+      ing_extra:sinFotos(RESERVAS_EXTRA),
+      gv5:sinFotos(GASTOS_VAR),
+      gf6:sinFotosFijos(GASTOS_FIJOS),
       gf_deleted:sj('gf_deleted',[]),
       updated:ts,
       writtenBy:deviceId
-    });
-  }catch(e){console.error('Sync error:',e);}
+    };
+    try{
+      await setDoc(doc(_db,'hostal','datos'),paquete);
+    }catch(e1){
+      // Sesión caducada (a Safari en el móvil se le olvida cada pocos días): pedirla y
+      // reintentar UNA vez. Antes esto fallaba en silencio y los tickets no subían.
+      if(e1&&e1.code==='permission-denied'&&await askLogin()) await setDoc(doc(_db,'hostal','datos'),paquete);
+      else throw e1;
+    }
+    // Subió bien: ya no hace falta guardar nada como "pendiente de subir"
+    localStorage.setItem('pend_gv5','[]');
+    localStorage.setItem('pend_ing_extra','[]');
+    okNube();
+  }catch(e){
+    console.error('Sync error:',e);
+    avisoNube(e&&e.code==='permission-denied'
+      ? 'No has iniciado sesión: lo que guardes se queda SOLO en este aparato.'
+      : 'No se está guardando en la nube. Lo último que has metido está SOLO en este aparato.');
+  }
 }
 
 // Auto-sync on every localStorage write — but not during incoming sync
@@ -2127,7 +2285,15 @@ async function syncToFirebase(){
   const orig=localStorage.setItem.bind(localStorage);
   localStorage.setItem=function(k,v){
     orig(k,v);
-    if(!_syncing&&['ing_extra','gv5','gf6','gf_deleted'].includes(k))syncToFirebase();
+    if(!_syncing&&['ing_extra','gv5','gf6','gf_deleted'].includes(k)){
+      // Se apunta lo que hay ahora como "pendiente de subir". Si la subida va bien se
+      // borra la nota; si falla, la próxima bajada de la nube respeta estos datos en
+      // vez de machacarlos (era como se perdían los tickets metidos desde el móvil).
+      if(k==='gv5'||k==='ing_extra'){
+        try{const a=JSON.parse(v);if(Array.isArray(a))orig('pend_'+k,JSON.stringify(a.map(x=>x&&x.id).filter(Boolean)));}catch(_){}
+      }
+      syncToFirebase();
+    }
   };
 })();
 
@@ -2202,7 +2368,7 @@ function cleanupInventedData(){
   const clean=GASTOS_VAR.filter(g=>g.tipo!=='f');
   if(clean.length!==GASTOS_VAR.length){
     GASTOS_VAR=clean;
-    localStorage.setItem('gv5',JSON.stringify(GASTOS_VAR));
+    guardarLocal('gv5',GASTOS_VAR);
   }
 }
 

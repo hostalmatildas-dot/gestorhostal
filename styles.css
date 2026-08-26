@@ -343,3 +343,8 @@ body.real-mode .real-badge{display:inline-flex;}
 
 /* Chapa para gastos sin fecha legible: no se esconden, se marcan para poder arreglarlos */
 .sinfecha-chip{font-size:9px;color:var(--red);background:rgba(191,95,74,.15);padding:1px 5px;border-radius:100px;white-space:nowrap}
+
+/* Cartel fijo de "la nube no está guardando" — se cierra tocándolo */
+.sync-warn{position:sticky;top:0;z-index:120;background:var(--red);color:#fff;font-size:12px;
+  font-weight:600;padding:9px 14px;text-align:center;cursor:pointer;line-height:1.35;
+  box-shadow:0 2px 10px rgba(0,0,0,.35)}
