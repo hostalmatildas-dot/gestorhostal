@@ -36,6 +36,14 @@ function setMode(isReal){
 function fn(n){if(!n&&n!==0)return'—';if(n===0)return'—';return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+'€';}
 function fn0(n){return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)+'€';}
 function pdate(s){return new Date(s+'T00:00:00');}
+// Fecha a la española SOLO para mostrar: 2026-02-13 → 13/02/2026.
+// Por dentro se sigue guardando en formato ordenador (YYYY-MM-DD), que es el que ordena bien.
+function fdate(s){const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||''));return m?`${m[3]}/${m[2]}/${m[1]}`:'—';}
+// Mes (1–12) de un gasto variable. Devuelve NaN si la fecha falta o no se entiende:
+// esos gastos no se esconden, se marcan con la chapa «sin fecha» para que no se pierdan.
+function gMes(g){const m=pdate(String((g&&g.fecha)||'').slice(0,10)).getMonth()+1;return isNaN(m)?NaN:m;}
+// ¿Este gasto trae justificante? La imagen puede estar guardada dentro (antigua) o en el almacén (fotoUrl)
+function tieneFoto(g){return !!(g&&(g.foto||g.fotoUrl));}
 // Mes de entrada de la reserva (solo para listados; el dinero se imputa con impMes)
 function getMes(r){return pdate(r.ci).getMonth()+1;}
 
@@ -88,7 +96,7 @@ function ingTotal(mes,field='neto'){const a=_ma(mes);return visibleReservas().re
 function ingByRoom(room,mes,field='neto'){const a=_ma(mes);return visibleReservas().filter(r=>r.room===room).reduce((s,r)=>s+a.reduce((x,m)=>x+impMes(r,m,field),0),0);}
 function comTotal(mes){const a=_ma(mes);return visibleReservas().reduce((s,r)=>s+a.reduce((x,m)=>x+impMes(r,m,'com'),0),0);}
 function gFijo(mes){const a=_ma(mes);return visibleGastosFijos().reduce((s,g)=>s+a.reduce((x,m)=>x+(g.m[m]||0),0),0);}
-function gVar(mes){const a=_ma(mes);return visibleGastosVar().filter(g=>a.includes(pdate(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);}
+function gVar(mes){const a=_ma(mes);return visibleGastosVar().filter(g=>a.includes(gMes(g))).reduce((s,g)=>s+(g.importe||0),0);}
 function gTot(mes){return gFijo(mes)+gVar(mes);}
 function neto(mes){return ingTotal(mes,'neto')-gTot(mes);}
 
@@ -343,16 +351,25 @@ function renderExcTable(pKey){
   visibleGastosFijos().forEach(g=>{
     const vals=cols.map(c=>g.m[c]||0);
     const tot=cols.reduce((s,c)=>s+(g.m[c]||0),0);
+    // Con un mes o trimestre elegido, no se listan los fijos que no tienen nada en él
+    if(!isFull&&!tot)return;
     tb+=`<tr class="coll-detail" data-g="gf"><td class="L stk">${g.n}</td>${vals.map(v=>`<td class="${v?'neg':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct neg">${tot?fn(tot):''}</td>`:''}</tr>`;
   });
   tb+=`<tr class="rowtot"><td class="L stk">TOTAL GASTOS FIJOS</td>${gfv.map(v=>`<td class="neg">${fn0(v)}</td>`).join('')}${isFull?`<td class="ct neg">${fn0(gfT)}</td>`:''}</tr>`;
   const gvv=cols.map(c=>gVar([c])),gvT=gvv.reduce((a,b)=>a+b,0);
   tb+=`<tr class="sec coll-hdr" onclick="toggleRows('gv',this)"><td class="stk" colspan="${colSpan}">▸ GASTOS VARIABLES <span style="font-size:9px;color:var(--text3);margin-left:5px" id="lbl-gv">▶ expandir</span></td></tr>`;
   visibleGastosVar().forEach(g=>{
-    const gm=new Date(g.fecha).getMonth()+1;
+    const gm=gMes(g);
+    const sinFecha=isNaN(gm);
+    // Solo los gastos del período elegido (mismo filtro que ya usan el Informe y el PDF).
+    // Los que no tienen fecha legible se listan siempre: si no, desaparecerían de todas las vistas.
+    if(!isFull&&!sinFecha&&!cols.includes(gm))return;
     const vals=cols.map(c=>c===gm?g.importe:0);
     const privBadge=g.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">privado</span>`:'';
-    tb+=`<tr class="coll-detail" data-g="gv"><td class="L stk">${g.n}${privBadge} <span style="font-size:9px;color:var(--text3)">(${g.fecha})</span></td>${vals.map(v=>`<td class="${v>0?'neg':v<0?'pos':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct ${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td>`:''}</tr>`;
+    const fechaTag=sinFecha
+      ?` <span class="sinfecha-chip">⚠️ sin fecha</span>`
+      :` <span style="font-size:9px;color:var(--text3)">(${fdate(g.fecha)})</span>`;
+    tb+=`<tr class="coll-detail" data-g="gv"><td class="L stk">${g.n}${privBadge}${fechaTag}</td>${vals.map(v=>`<td class="${v>0?'neg':v<0?'pos':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct ${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td>`:''}</tr>`;
   });
   tb+=`<tr class="rowtot"><td class="L stk">TOTAL GASTOS VARIABLES</td>${gvv.map(v=>`<td class="${v?'neg':''}">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct neg">${gvT?fn(gvT):''}</td>`:''}</tr>`;
   const gtv=cols.map(c=>gTot([c])),gtT=gtv.reduce((a,b)=>a+b,0);
@@ -537,7 +554,7 @@ function renderGastos(){
   if(gt)gt.textContent='Gastos · '+mLabel;
   const gfT=visibleGastosFijos().reduce((s,g)=>s+Q1m.reduce((a,m)=>a+(g.m[m]||0),0),0);
   const gvAll=visibleGastosVar();
-  const gvT=gvAll.filter(g=>Q1m.includes(new Date(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);
+  const gvT=gvAll.filter(g=>Q1m.includes(gMes(g))).reduce((s,g)=>s+(g.importe||0),0);
   document.getElementById('tot-f').textContent=fn0(gfT);
   document.getElementById('tot-v').textContent=fn0(gvT);
   const MN={1:'Ene',2:'Feb',3:'Mar',4:'Abr',5:'May',6:'Jun',7:'Jul',8:'Ago',9:'Sep',10:'Oct',11:'Nov',12:'Dic'};
@@ -565,7 +582,7 @@ function renderGastos(){
   document.getElementById('body-v').innerHTML=vHtml;
   const conc={};
   visibleGastosFijos().forEach(g=>{Q1m.forEach(m=>{if(g.m[m])conc[g.cat]=(conc[g.cat]||0)+(g.m[m]||0);});});
-  gvAll.filter(g=>Q1m.includes(new Date(g.fecha).getMonth()+1)&&g.importe>0).forEach(g=>{conc[g.cat]=(conc[g.cat]||0)+g.importe;});
+  gvAll.filter(g=>Q1m.includes(gMes(g))&&g.importe>0).forEach(g=>{conc[g.cat]=(conc[g.cat]||0)+g.importe;});
   const totC=Object.values(conc).reduce((a,b)=>a+b,0),sorted=Object.entries(conc).sort((a,b)=>b[1]-a[1]),maxV=sorted[0]?.[1]||1;
   const CC={fiscal:'#c8a84a',financiero:'#4a82a8',inmueble:'#7a9a5a',suministros:'#bf5f4a',tecnologia:'#8a72b0',limpieza:'#5a9a8a',lavanderia:'#7a6a9a',mantenimiento:'#8a7a5a',otros:'#6a7a8a'};
   const ct=document.getElementById('conc-title');if(ct)ct.textContent='Por concepto · '+mLabel;
@@ -916,14 +933,14 @@ function saveGasto(){
     if(!fid){alert('Elige qué gasto fijo estás actualizando');return;}
     const gf=GASTOS_FIJOS.find(x=>x.id===fid);
     if(!gf){alert('Gasto fijo no encontrado');return;}
-    const mes=new Date(fecha).getMonth()+1;
+    const mes=pdate(fecha).getMonth()+1;
     gf.m[mes]=importe;
     if(_fotoData){gf.fotoM=gf.fotoM||{};gf.fotoM[mes]=_fotoData;}
     saveGastosFijos();
     closeModals();
     if(document.getElementById('page-gastos').classList.contains('on'))renderGastos();
     renderDashboard();
-    const mesNombre=new Date(fecha).toLocaleDateString('es-ES',{month:'long'});
+    const mesNombre=pdate(fecha).toLocaleDateString('es-ES',{month:'long'});
     notif(`${gf.n} actualizado: ${importe.toFixed(2)}€ en ${mesNombre}`);
     _editId=null;_fotoData=null;
     return;
@@ -1293,32 +1310,39 @@ function renderGastosByMonth(){
   const MN={1:'Ene',2:'Feb',3:'Mar',4:'Abr',5:'May',6:'Jun',7:'Jul',8:'Ago',9:'Sep',10:'Oct',11:'Nov',12:'Dic'};
   const byMonth={};
   Q1m.forEach(m=>byMonth[m]=[]);
+  // Gastos cuya fecha falta o no se entiende: no se tiran, van a un grupo aparte al final
+  const sinFecha=[];
   GASTOS_VAR.forEach((g,i)=>{
-    const gm=new Date(g.fecha).getMonth()+1;
-    if(Q1m.includes(gm)) byMonth[gm].push({g,i});
+    const gm=gMes(g);
+    if(isNaN(gm)) sinFecha.push({g,i});
+    else if(Q1m.includes(gm)) byMonth[gm].push({g,i});
   });
+  const fila=({g,i},etiqueta)=>{
+    const prTag=g.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">privado</span>`:'';
+    const fotoTag=tieneFoto(g)?` <span style="font-size:9px;cursor:pointer;color:var(--gold)" onclick="showFoto('${g.id}')" title="Ver justificante">📷</span>`:'';
+    const fTag=isNaN(gMes(g))?` <span class="sinfecha-chip">⚠️ sin fecha</span>`:` <span style="font-size:9px;color:var(--text3)">${fdate(g.fecha)}</span>`;
+    return `<tr style="${g.privado?'opacity:.8':''}">
+      <td style="font-weight:700;color:var(--text3)">${etiqueta}</td>
+      <td><span class="edit-link" onclick="editGasto('${g.id}')">${g.n}</span>${prTag}${fotoTag}${fTag}</td>
+      <td><span class="tag ${g.tipo||'v'}">${g.tipo==='f'?'Fijo':'Var'}</span></td>
+      <td style="font-size:10px;color:var(--text2)">${g.cat}</td>
+      <td style="font-size:10px;color:var(--text2)">${g.metodo}</td>
+      <td class="${g.importe<0?'pos':'neg'}">${fn(g.importe)}</td>
+      <td style="white-space:nowrap"><button onclick="editGasto('${g.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 3px" title="Editar">✎</button><button onclick="delGasto(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 3px" title="Eliminar">×</button></td>
+    </tr>`;
+  };
   let html='<div style="overflow-x:auto"><table class="gtbl"><thead><tr><th>Mes</th><th>Concepto</th><th>Tipo</th><th>Cat.</th><th>Método</th><th>Importe</th><th></th></tr></thead><tbody>';
   Q1m.forEach(m=>{
     const items=byMonth[m];
-    if(!IS_REAL) items.forEach(({g})=>{if(g.privado)return;}); // filter
     const visible=IS_REAL?items:items.filter(({g})=>!g.privado);
     if(!visible.length)return;
-    visible.forEach(({g,i},j)=>{
-      const prTag=g.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">privado</span>`:'';
-      const fotoTag=g.foto?` <span style="font-size:9px;cursor:pointer;color:var(--gold)" onclick="showFoto('${g.id}')" title="Ver justificante">📷</span>`:'';
-      html+=`<tr style="${g.privado?'opacity:.8':''}">
-        <td style="font-weight:700;color:var(--text3)">${j===0?MN[m]:''}</td>
-        <td><span class="edit-link" onclick="editGasto('${g.id}')">${g.n}</span>${prTag}${fotoTag}</td>
-        <td><span class="tag ${g.tipo||'v'}">${g.tipo==='f'?'Fijo':'Var'}</span></td>
-        <td style="font-size:10px;color:var(--text2)">${g.cat}</td>
-        <td style="font-size:10px;color:var(--text2)">${g.metodo}</td>
-        <td class="${g.importe<0?'pos':'neg'}">${fn(g.importe)}</td>
-        <td style="white-space:nowrap"><button onclick="editGasto('${g.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 3px" title="Editar">✎</button><button onclick="delGasto(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 3px" title="Eliminar">×</button></td>
-      </tr>`;
-    });
+    visible.forEach((it,j)=>{html+=fila(it,j===0?MN[m]:'');});
   });
-  const tot=visibleGastosVar().filter(g=>Q1m.includes(new Date(g.fecha).getMonth()+1)).reduce((s,g)=>s+(g.importe||0),0);
+  const sfVis=IS_REAL?sinFecha:sinFecha.filter(({g})=>!g.privado);
+  sfVis.forEach((it,j)=>{html+=fila(it,j===0?'—':'');});
+  const tot=visibleGastosVar().filter(g=>Q1m.includes(gMes(g))).reduce((s,g)=>s+(g.importe||0),0);
   html+=`<tr class="tot-r"><td colspan="5">TOTAL ${IS_REAL?'(real)':'(fiscal)'}</td><td class="neg">${fn(tot)}</td><td></td></tr>`;
+  if(sfVis.length)html+=`<tr><td colspan="7" style="font-size:10px;color:var(--red);padding:6px 8px">⚠️ ${sfVis.length} gasto(s) sin fecha: no suman en ningún mes. Ábrelos y ponles la fecha.</td></tr>`;
   html+='</tbody></table></div>';
   return html;
 }
@@ -1446,7 +1470,7 @@ function renderInforme(){
   h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS VARIABLES</td></tr>`;
   // Solo los gastos del período: si no, salía una fila por cada gasto del año con la
   // columna TOTAL rellena pero sin sumar en el subtotal (mismo filtro que ya usa el PDF).
-  visibleGastosVar().forEach(g=>{const gm=pdate(g.fecha).getMonth()+1;if(!Q1m.includes(gm))return;h+=`<tr><td>${g.n} <span class="dim">(${g.fecha})</span></td>${Q1m.map(m=>`<td class="${m===gm&&g.importe>0?'neg':m===gm&&g.importe<0?'pos':''}">${m===gm&&g.importe?fn(g.importe):''}</td>`).join('')}<td class="${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td></tr>`;});
+  visibleGastosVar().forEach(g=>{const gm=gMes(g);if(!Q1m.includes(gm))return;h+=`<tr><td>${g.n} <span class="dim">(${fdate(g.fecha)})</span></td>${Q1m.map(m=>`<td class="${m===gm&&g.importe>0?'neg':m===gm&&g.importe<0?'pos':''}">${m===gm&&g.importe?fn(g.importe):''}</td>`).join('')}<td class="${g.importe<0?'pos':'neg'}">${g.importe?fn(g.importe):''}</td></tr>`;});
   const gvT=gVar(Q1m);
   h+=`<tr class="tot"><td>SUBTOTAL GASTOS VARIABLES</td>${Q1m.map(m=>`<td class="${gVar([m])?'neg':''}">${gVar([m])?fn(gVar([m])):''}</td>`).join('')}<td class="${gvT<0?'pos':'neg'}">${gvT?fn(gvT):''}</td></tr>`;
   const gT=gfT+gvT,res=inT-gT;
@@ -1509,7 +1533,7 @@ function exportCSV(){
   csv+=`INGRESOS NETOS,${Q1m.map(m=>fv(ingTotal([m],'neto'))).join(',')},${fv(ingTotal(Q1m,'neto'))}\n--- GASTOS FIJOS ---,,,,\n`;
   visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${q(g.n)},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
   csv+=`--- GASTOS VARIABLES ---,,,,\n`;
-  visibleGastosVar().forEach(g=>{const gm=pdate(g.fecha).getMonth()+1;if(!Q1m.includes(gm))return;csv+=`${q(g.n)},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
+  visibleGastosVar().forEach(g=>{const gm=gMes(g);if(!Q1m.includes(gm))return;csv+=`${q(g.n)},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
   csv+=`TOTAL GASTOS,${Q1m.map(m=>fv(gTot([m]))).join(',')},${fv(gTot(Q1m))}\nRESULTADO NETO,${Q1m.map(m=>fv(ingTotal([m],'neto')-gTot([m]))).join(',')},${fv(ingTotal(Q1m,'neto')-gTot(Q1m))}\n`;
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`hostal_matildas_${P.slug}_2026.csv`;a.click();notif('CSV exportado');
 }
@@ -1804,7 +1828,7 @@ async function exportPDF(){
         doc.setFontSize(8);
         doc.setFont('helvetica','bold');
         doc.setTextColor(60,60,60);
-        const jLines=doc.splitTextToSize(g.n+' — '+g.fecha+' — '+fn(g.importe),W-2*M);
+        const jLines=doc.splitTextToSize(g.n+' — '+(/^\d{4}-/.test(g.fecha)?fdate(g.fecha):g.fecha)+' — '+fn(g.importe),W-2*M);
         doc.text(jLines,M,jy);
         jy+=jLines.length*3.6+1;
         try{

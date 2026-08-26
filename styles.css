@@ -340,3 +340,6 @@ body.real-mode .real-badge{display:inline-flex;}
 .notif.err{background:var(--red,#c0392b);}
 .edit-link{cursor:pointer;border-bottom:1px dotted var(--text3);transition:color .15s;}
 .edit-link:hover{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* Chapa para gastos sin fecha legible: no se esconden, se marcan para poder arreglarlos */
+.sinfecha-chip{font-size:9px;color:var(--red);background:rgba(191,95,74,.15);padding:1px 5px;border-radius:100px;white-space:nowrap}
