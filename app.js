@@ -464,7 +464,7 @@ function buildCalendar(containerId, pKey, rooms){
       const boc=`<div class="boc">
         <div class="boc-canal ${r.canal}">${r.canal==='booking'?'Booking.com':r.canal==='airbnb'?'Airbnb':'Directo'}</div>
         <div class="boc-guest">${r.guest}</div>
-        <div class="boc-dates">${r.ci} → ${r.co}</div>
+        <div class="boc-dates">${fdate(r.ci)} → ${fdate(r.co)}</div>
         <div class="boc-r"><span class="boc-k">Bruto</span><span class="boc-v g">${fn0(r.bruto)}</span></div>
         ${r.com?`<div class="boc-r"><span class="boc-k">Comisión</span><span class="boc-v r">${fn(r.com)}</span></div>`:''}
         <div class="boc-r"><span class="boc-k">Neto</span><span class="boc-v g">${fn0(r.neto)}</span></div>
@@ -518,7 +518,7 @@ function renderHabs(){
           :`<td style="font-size:9px;color:var(--text3);text-align:center">OTA</td>`;
         const st=reconcileStatus(r);
         const pmsCell=hasPMS?(st?`<td style="text-align:center;font-size:13px" title="${st.msg}">${st.icon}</td>`:'<td></td>'):'';
-        return`<tr><td>${r.guest}${privBadge}${pendBadge}</td><td><span class="badge ${r.canal}">${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td>${r.ci}</td><td>${r.co}</td><td style="color:var(--green)">${fn0(r.bruto)}</td><td style="color:var(--red)">${r.com?fn(r.com):'—'}</td><td style="color:var(--green)">${fn0(r.neto)}</td>${pmsCell}${actions}</tr>`;
+        return`<tr><td>${r.guest}${privBadge}${pendBadge}</td><td><span class="badge ${r.canal}">${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td>${fdate(r.ci)}</td><td>${fdate(r.co)}</td><td style="color:var(--green)">${fn0(r.bruto)}</td><td style="color:var(--red)">${r.com?fn(r.com):'—'}</td><td style="color:var(--green)">${fn0(r.neto)}</td>${pmsCell}${actions}</tr>`;
       }).join('')}
       ${pmsSinRegistrar.map(p=>`<tr style="background:rgba(200,168,74,.06)"><td style="color:var(--gold)">${p.guest} <span style="font-size:9px;opacity:.7">·PMS</span></td><td><span class="badge ${p.canal}">${p.canal==='booking'?'Booking':p.canal==='airbnb'?'Airbnb':'Directo'}</span></td><td style="color:var(--gold)">${p.ci}</td><td style="color:var(--gold)">${p.co}</td><td style="color:var(--gold)">${p.bruto?fn0(p.bruto):'—'}</td><td>—</td><td>—</td>${hasPMS?'<td style="text-align:center;font-size:11px;color:var(--gold)" title="En PMS pero sin registrar en contabilidad">🟡</td>':''}<td style="font-size:9px;color:var(--gold);text-align:center">Sin reg.</td></tr>`).join('')}
     </tbody></table></div>`:`<div style="padding:10px 14px;font-size:11px;color:var(--text3);font-style:italic">Sin reservas registradas en ${mL}</div>`;
@@ -1492,7 +1492,7 @@ function renderPendBox(elId){
   const tot=pend.reduce((s,r)=>s+(r.bruto||0),0);
   el.innerHTML=`<div style="margin:0 0 12px;padding:10px 14px;background:rgba(200,168,74,.08);border:1px solid var(--gold);border-radius:8px;font-size:12px">
     <b style="color:var(--gold)">⏳ Sin cobrar todavía (incluido en ingresos por mes de estancia):</b> ${pend.length} reserva${pend.length>1?'s':''} · <b>${fn0(tot)}</b>
-    <div style="margin-top:5px;font-size:11px;color:var(--text3)">${pend.map(r=>`${r.guest} (${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'} · ${r.ci}→${r.co||'?'} · ${fn0(r.bruto||0)})`).join(' · ')}</div>
+    <div style="margin-top:5px;font-size:11px;color:var(--text3)">${pend.map(r=>`${r.guest} (${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'} · ${fdate(r.ci)}→${r.co?fdate(r.co):'?'} · ${fn0(r.bruto||0)})`).join(' · ')}</div>
     <div style="margin-top:4px;font-size:10px;color:var(--text3)">Cuando llegue el dinero, edita la reserva y pon la <b>fecha de cobro</b> para llevar el control de cobros.</div>
   </div>`;
 }
@@ -1529,7 +1529,7 @@ function exportCSV(){
   ].forEach(r=>{const ms=Q1m.map(m=>visibleReservas().filter(x=>x.canal===r.c).reduce((s,x)=>s+impMes(x,m,r.f),0));const fn2=v=>r.abs?fv(Math.abs(v)):fv(v);csv+=`${r.l},${ms.map(fn2).join(',')},${fn2(ms.reduce((a,b)=>a+b,0))}\n`;});
   prorrateosPeriodo(Q1m).forEach(p=>{csv+=`${q('PRORRATEO: '+p.r.guest+' ('+p.r.ci+' a '+p.r.co+', total '+(p.r.bruto||0).toFixed(2)+'): '+p.partes.map(x=>MES_CORTO[x.m]+' '+x.bruto.toFixed(2)+' ('+x.noches+' noches)').join(' | '))}${','.repeat(Q1m.length+1)}\n`;});
   const pendC=pendientesCobro();
-  if(pendC.length)csv+=`${q('SIN COBRAR TODAVIA (incluido por mes de estancia): '+pendC.map(r=>`${r.guest} ${r.ci} ${(r.bruto||0).toFixed(2)}`).join(' | '))}${','.repeat(Q1m.length+1)}\n`;
+  if(pendC.length)csv+=`${q('SIN COBRAR TODAVIA (incluido por mes de estancia): '+pendC.map(r=>`${r.guest} ${fdate(r.ci)} ${(r.bruto||0).toFixed(2)}`).join(' | '))}${','.repeat(Q1m.length+1)}\n`;
   csv+=`INGRESOS NETOS,${Q1m.map(m=>fv(ingTotal([m],'neto'))).join(',')},${fv(ingTotal(Q1m,'neto'))}\n--- GASTOS FIJOS ---,,,,\n`;
   visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${q(g.n)},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
   csv+=`--- GASTOS VARIABLES ---,,,,\n`;
@@ -1768,7 +1768,7 @@ async function exportPDF(){
     const pendP=pendientesCobro();
     if(pendP.length){
       doc.setFontSize(6.5);doc.setTextColor(150,120,40);
-      doc.text(`Sin cobrar todavia (incluido en ingresos por mes de estancia): ${pendP.length} reserva(s) · ${pendP.reduce((s,r)=>s+(r.bruto||0),0).toFixed(2)} EUR — ${pendP.map(r=>`${r.guest} ${r.ci}`).join(' · ').slice(0,180)}`,M+2,y+3);
+      doc.text(`Sin cobrar todavia (incluido en ingresos por mes de estancia): ${pendP.length} reserva(s) · ${pendP.reduce((s,r)=>s+(r.bruto||0),0).toFixed(2)} EUR — ${pendP.map(r=>`${r.guest} ${fdate(r.ci)}`).join(' · ').slice(0,180)}`,M+2,y+3);
       doc.setTextColor(0,0,0);y+=4;
     }
     y+=2;
