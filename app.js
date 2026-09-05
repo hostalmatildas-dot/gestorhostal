@@ -36,6 +36,10 @@ function setMode(isReal){
 function fn(n){if(!n&&n!==0)return'—';if(n===0)return'—';return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+'€';}
 function fn0(n){return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)+'€';}
 function pdate(s){return new Date(s+'T00:00:00');}
+// Fecha en formato ordenador (2026-09-05) leyendo el reloj de ESPAÑA. Ojo: toISOString()
+// va en hora de Londres, así que de madrugada devolvería el día de ayer.
+function isoLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function hoyISO(){return isoLocal(new Date());}
 // Fecha a la española SOLO para mostrar: 2026-02-13 → 13/02/2026.
 // Por dentro se sigue guardando en formato ordenador (YYYY-MM-DD), que es el que ordena bien.
 function fdate(s){const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||''));return m?`${m[3]}/${m[2]}/${m[1]}`:'—';}
@@ -116,7 +120,23 @@ function visibleReservas(){ return IS_REAL ? RESERVAS : RESERVAS.filter(r=>!r.pr
 // estancia (prorrateado con impMes si cruza de mes) — la fecha de cobro (r.fc) NO decide el
 // mes, solo sirve para recordar qué reservas siguen sin cobrar (desde jul-2026).
 const CAJA_DESDE='2026-07-01';
-function esPendienteCobro(r){return !r.fc&&(r.co||r.ci)>=CAJA_DESDE;}
+// Días que se le dan a una OTA para pagar antes de dar la voz de alarma (5-sep-2026).
+// Booking y Airbnb pagan solos a los pocos días de la salida: avisar de una reserva que
+// acaba de terminar solo hacía ruido — 33 avisos en pantalla, casi todos falsos. Pasados
+// 30 días sin fecha de cobro sí es raro y merece mirarlo.
+const DIAS_GRACIA_OTA=30;
+function esPendienteCobro(r){
+  if(r.fc)return false;                       // ya cobrada
+  const fin=r.co||r.ci;
+  if(!fin||fin<CAJA_DESDE)return false;
+  const hoy=hoyISO();
+  if(fin>hoy)return false;                    // la estancia aún no ha terminado
+  if(r.canal==='booking'||r.canal==='airbnb'){
+    const lim=pdate(fin); lim.setDate(lim.getDate()+DIAS_GRACIA_OTA);
+    return isoLocal(lim)<hoy;                 // solo si ya se pasó el plazo de gracia
+  }
+  return true;                                // directo (Bizum/efectivo): avisa desde el día siguiente
+}
 function pendientesCobro(){ return visibleReservas().filter(esPendienteCobro); }
 // Filter gastos_var by mode
 function visibleGastosVar(){ return IS_REAL ? GASTOS_VAR : GASTOS_VAR.filter(g=>!g.privado); }
@@ -605,7 +625,7 @@ function renderHabs(){
       ${rr.map(r=>{
         const isExtra=RESERVAS_EXTRA.some(x=>x.id===r.id);
         const privBadge=r.privado?` <span style="font-size:9px;color:var(--green);background:var(--green-bg);padding:1px 5px;border-radius:100px">priv.</span>`:'';
-        const pendBadge=esPendienteCobro(r)?` <span title="Sin cobrar todavía (incluido en ingresos por mes de estancia)" style="font-size:10px">⏳</span>`:'';
+        const pendBadge=esPendienteCobro(r)?` <span title="Sin cobrar todavía — el ingreso SÍ está contado, por mes de estancia. De Booking/Airbnb solo se avisa pasados ${DIAS_GRACIA_OTA} días desde la salida." style="font-size:10px">⏳</span>`:'';
         const actions=isExtra
           ?`<td style="white-space:nowrap"><button onclick="editIngreso('${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:0 3px" title="Editar">✎</button><button onclick="delIngreso('${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0 3px" title="Eliminar">×</button></td>`
           :`<td style="font-size:9px;color:var(--text3);text-align:center">OTA</td>`;
@@ -1604,7 +1624,7 @@ function renderPendBox(elId){
   el.innerHTML=`<div style="margin:0 0 12px;padding:10px 14px;background:rgba(200,168,74,.08);border:1px solid var(--gold);border-radius:8px;font-size:12px">
     <b style="color:var(--gold)">⏳ Sin cobrar todavía (incluido en ingresos por mes de estancia):</b> ${pend.length} reserva${pend.length>1?'s':''} · <b>${fn0(tot)}</b>
     <div style="margin-top:5px;font-size:11px;color:var(--text3)">${pend.map(r=>`${r.guest} (${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'} · ${fdate(r.ci)}→${r.co?fdate(r.co):'?'} · ${fn0(r.bruto||0)})`).join(' · ')}</div>
-    <div style="margin-top:4px;font-size:10px;color:var(--text3)">Cuando llegue el dinero, edita la reserva y pon la <b>fecha de cobro</b> para llevar el control de cobros.</div>
+    <div style="margin-top:4px;font-size:10px;color:var(--text3)">Solo se avisa de lo raro: directos ya terminados, y Booking/Airbnb que llevan más de ${DIAS_GRACIA_OTA} días sin cobrar. Baja de Booking el «Informe de pago» y súbelo en <b>Importar de Booking/Airbnb</b>: se marcan cobradas solas.</div>
   </div>`;
 }
 
