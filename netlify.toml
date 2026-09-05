@@ -7,6 +7,12 @@
   to = "/.netlify/functions/anthropic"
   status = 200
 
+# Puente hacia el PMS: la llave del programa de reservas vive en el servidor, no aquí
+[[redirects]]
+  from = "/api/pms"
+  to = "/.netlify/functions/pms"
+  status = 200
+
 # El inventario de plataformas es PRIVADO: la CLI lo sube igualmente, así que se bloquea aquí
 [[redirects]]
   from = "/INVENTARIO_PLATAFORMAS.csv"

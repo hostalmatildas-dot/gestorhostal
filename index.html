@@ -129,7 +129,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
     <button class="add-btn" id="pms-sync-btn" onclick="fetchPMSData()" style="background:var(--blue-bg);border-color:var(--blue);color:var(--blue)">⟳ Sync PMS</button>
-    <button class="add-btn" id="pms-import-btn" onclick="importarDesdePMS()" title="Trae del PMS las reservas que aún no están aquí, con su forma de cobro y la comisión de Stripe como gasto" style="background:var(--green-bg);border-color:var(--green);color:var(--green)">⤵ Traer del PMS</button>
+    <button class="add-btn" id="pms-import-btn" onclick="refrescarDelPMS()" title="Se hace solo al abrir la app. Pulsa aquí para refrescar ahora: trae del PMS las reservas de julio en adelante que aún no están, con su forma de cobro y la comisión de Stripe como gasto" style="background:var(--green-bg);border-color:var(--green);color:var(--green)">⤵ Traer del PMS</button>
     <button class="add-btn" onclick="document.getElementById('recon-input').click()" style="background:var(--gold-bg,rgba(200,168,74,.12));border-color:var(--gold);color:var(--gold)">📥 Importar y comparar</button>
     <input type="file" id="recon-input" accept=".xlsx,.xls,.csv,.tsv,.txt,.pdf,image/*" multiple onchange="importReconFiles(this)" style="display:none">
     <span id="pms-sync-info" style="font-size:10px;color:var(--text3)"></span>

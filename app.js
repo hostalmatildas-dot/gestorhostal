@@ -247,25 +247,44 @@ function marcarPastillasIniciales(){
 }
 
 // ═══════════ PMS SYNC + RECONCILIACIÓN ═══════════
-async function fetchPMSData(){
+// La app NO llama al PMS directamente: va por el puente de Netlify, que es quien
+// guarda la llave. Motivo (6 sep 2026): el PMS y el Gestor están en dominios distintos
+// y la cookie de sesión del PMS es SameSite=lax — el navegador no la manda nunca en esa
+// llamada, así que el PMS respondía «Unauthorized» y «Sync PMS» no traía NADA. Poner la
+// llave en este archivo tampoco valía: cualquiera podría leerla y sacar el listado de
+// huéspedes. La contraseña que sí viaja desde aquí es la misma que ya usa la IA.
+const PMS_PROXY_URL='https://gestorhostal-proxy.netlify.app/api/pms';
+
+// silencioso = arranque automático: no se pregunta la contraseña ni se avisa de que
+// todo ha ido bien. Solo se habla cuando hay algo que contar.
+async function fetchPMSData(silencioso=false){
   const btn=document.getElementById('pms-sync-btn');
   const info=document.getElementById('pms-sync-info');
-  btn.textContent='Cargando…'; btn.disabled=true;
+  const secret=silencioso?(localStorage.getItem('appSecret')||''):getAppSecret();
+  if(!secret){
+    if(info&&!silencioso)info.textContent='Hace falta la contraseña de la app';
+    return false;
+  }
+  if(btn&&!silencioso){btn.textContent='Cargando…'; btn.disabled=true;}
   try{
-    const r=await fetch(`${PMS_URL}/accounting/reservations?year=2026`);
+    const r=await fetch(`${PMS_PROXY_URL}?year=2026`,{headers:{'x-app-secret':secret}});
+    if(r.status===401){localStorage.removeItem('appSecret');throw new Error('clave');}
     if(!r.ok) throw new Error(r.status);
     RESERVAS_PMS=await r.json();
     pmsLastSync=new Date();
     const hh=pmsLastSync.getHours().toString().padStart(2,'0');
     const mm=pmsLastSync.getMinutes().toString().padStart(2,'0');
-    info.textContent=`Última sync: ${hh}:${mm} · ${RESERVAS_PMS.length} reservas`;
+    if(info)info.textContent=`Última sync: ${hh}:${mm} · ${RESERVAS_PMS.length} reservas`;
     if(document.getElementById('page-habitaciones').classList.contains('on')) renderHabs();
-    notif(`PMS sincronizado: ${RESERVAS_PMS.length} reservas`);
+    if(!silencioso)notif(`PMS sincronizado: ${RESERVAS_PMS.length} reservas`);
+    return true;
   }catch(e){
-    info.textContent='Error de conexión con PMS';
-    notif('No se pudo conectar con el PMS',true);
+    const malaClave=String(e.message)==='clave';
+    if(info)info.textContent=malaClave?'Contraseña incorrecta':'Error de conexión con PMS';
+    if(!silencioso)notif(malaClave?'Contraseña incorrecta · vuelve a pulsar «Sync PMS»':'No se pudo conectar con el PMS',true);
+    return false;
   }finally{
-    btn.textContent='⟳ Sync PMS'; btn.disabled=false;
+    if(btn&&!silencioso){btn.textContent='⟳ Sync PMS'; btn.disabled=false;}
   }
 }
 
@@ -306,10 +325,28 @@ function reconcileStatus(r){
 //
 // Los identificadores son fijos (pms-123 / comg-pms-123) para que volver a importar no
 // duplique nada: es la unica proteccion real contra apretar el boton dos veces.
-function importarDesdePMS(){
-  if(!RESERVAS_PMS.length){notif('Primero pulsa «Sync PMS»',true);return;}
-  let nuevas=0,gastos=0,yaEstaban=0,sinComision=0;
+// ⛔ Fecha a partir de la cual se traen reservas. El 1T y el 2T ya están entregados a la
+// gestora: si una reserva de esos meses no está en el Gestor es porque no se registró, y
+// meterla ahora cambiaría unos totales ya presentados. Decisión de Glenda, 6 sep 2026.
+const IMPORTAR_PMS_DESDE='2026-07-01';
+
+// Cuántas traería ahora mismo, sin tocar nada. Sirve para el freno de mano de abajo.
+function contarNuevasPMS(){
+  return RESERVAS_PMS.filter(p=>p.ci&&p.ci>=IMPORTAR_PMS_DESDE
+    &&!RESERVAS.some(r=>r.id==='pms-'+(p.pms_id||p.id))&&!findAccountingMatch(p)).length;
+}
+
+// 🛑 Freno de mano: de golpe y sin pedirlo, no. Un día normal entran una o dos reservas
+// nuevas y pasan solas. Si de repente hay muchas (la primera vez son 137), la app no
+// las mete: avisa y espera a que Glenda pulse el botón, para que vea antes lo que va a
+// cambiar en sus cuentas.
+const PMS_AUTO_MAX=10;
+
+function importarDesdePMS(auto=false){
+  if(!RESERVAS_PMS.length){if(!auto)notif('Primero pulsa «Sync PMS»',true);return;}
+  let nuevas=0,gastos=0,yaEstaban=0,sinComision=0,fueraDePlazo=0;
   RESERVAS_PMS.forEach(p=>{
+    if(!p.ci||p.ci<IMPORTAR_PMS_DESDE){fueraDePlazo++;return;}
     const idRes='pms-'+(p.pms_id||p.id);
     // Ya registrada: por identificador, o porque ya existe una entrada de esa habitacion
     // y esas fechas metida desde un archivo (no se duplica el ingreso).
@@ -332,7 +369,10 @@ function importarDesdePMS(){
           id:idG,
           n:'Comisión '+(p.metodo==='OTA'?(p.canal==='booking'?'Booking':'Airbnb'):'Stripe')+' · '+(p.guest||p.room),
           cat:'financiero',fecha:p.cobrado_el||p.ci,importe:p.comision,
-          metodo:'transferencia',tipo:'v',privado:false,foto:null,fotoRef:null,recur:null
+          // Stripe se queda su parte del cobro con tarjeta; Booking y Airbnb la descuentan
+          // de la transferencia que mandan.
+          metodo:p.metodo==='OTA'?'transferencia':'tarjeta',
+          tipo:'v',privado:false,foto:null,fotoRef:null,recur:null
         });
         gastos++;
       }
@@ -347,11 +387,39 @@ function importarDesdePMS(){
   renderDashboard();
   if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
   const partes=[];
-  if(nuevas)partes.push(nuevas+' reserva(s) traida(s)');
-  if(gastos)partes.push(gastos+' comision(es) apuntada(s) como gasto');
-  if(yaEstaban)partes.push(yaEstaban+' ya estaban');
-  if(sinComision)partes.push('⚠️ '+sinComision+' de OTA sin comision: ponla tú');
-  notif(partes.length?partes.join(' · '):'No habia nada nuevo que traer');
+  if(nuevas)partes.push(nuevas+' reserva(s) traída(s)');
+  if(gastos)partes.push(gastos+' comisión(es) apuntada(s) como gasto');
+  if(yaEstaban&&!auto)partes.push(yaEstaban+' ya estaban');
+  if(sinComision)partes.push('⚠️ '+sinComision+' de OTA sin comisión: ponla tú');
+  // En automático solo se habla si de verdad ha entrado algo: abrir la app no puede
+  // saltar un aviso cada vez para decir que no hay novedades.
+  if(auto){ if(nuevas||gastos)notif(partes.join(' · ')); }
+  else notif(partes.length?partes.join(' · '):'No había nada nuevo que traer');
+}
+
+// El botón verde: primero pregunta al PMS y luego trae. Sin el primer paso traería lo
+// que se leyó hace rato, y parecería que no ha llegado nada nuevo.
+async function refrescarDelPMS(){
+  const btn=document.getElementById('pms-import-btn');
+  if(btn){btn.disabled=true;btn.textContent='Trayendo…';}
+  try{ if(await fetchPMSData())importarDesdePMS(); }
+  finally{ if(btn){btn.disabled=false;btn.textContent='⤵ Traer del PMS';} }
+}
+
+// Al abrir la app: se trae solo lo nuevo, sin que ella tenga que pulsar nada. Se llama
+// DESPUÉS de bajar los datos de la nube, para que lo que ya está registrado se reconozca
+// y no entre por duplicado.
+async function traerDelPMSAlArrancar(){
+  try{
+    if(!localStorage.getItem('appSecret'))return;   // aún no ha escrito la contraseña
+    if(!await fetchPMSData(true))return;
+    const n=contarNuevasPMS();
+    if(n>PMS_AUTO_MAX){
+      notif(`Hay ${n} reservas del PMS sin registrar · pulsa «⤵ Traer del PMS» para revisarlas`,true);
+      return;
+    }
+    importarDesdePMS(true);
+  }catch(_){ /* si el PMS no contesta, la app sigue funcionando igual */ }
 }
 
 function renderReconBanner(habPeriodMes){
@@ -2374,6 +2442,7 @@ async function initFirebase(){
     okNube();
     // Mudar al almacén las fotos viejas que aún viajan dentro del paquete de datos
     migrarFotos().then(()=>syncToFirebase());
+    traerDelPMSAlArrancar();
 
     // POLLING every 15s instead of onSnapshot (works with all browsers/blockers)
     async function pollFirebase(){

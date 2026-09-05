@@ -8,3 +8,6 @@ memory/
 # Config local de Netlify
 .netlify/
 .DS_Store
+
+# Copias de seguridad sueltas del editor (no deben publicarse)
+*.bak-*
