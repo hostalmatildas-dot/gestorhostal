@@ -274,6 +274,66 @@ function reconcileStatus(r){
   return{icon:'✅',msg:'Coincide con PMS',color:'var(--green)'};
 }
 
+// ═══════════ IMPORTAR DEL PMS (5 sep 2026) ═══════════
+// Hasta hoy el PMS solo servia para COMPARAR: las reservas habia que meterlas a mano o
+// desde los archivos de las OTAs. Ahora se pueden traer tal cual, con como se cobraron y
+// con lo que se quedo la pasarela.
+//
+// ⛔ Criterio acordado con la gestoria (5 sep 2026): desde el 1 de JULIO el ingreso se
+// declara por el precio COMPLETO y la comision va a GASTOS (tiene factura propia de una
+// empresa extranjera y hay que poder enseñarla). Antes de esa fecha no se toca nada: el
+// 1T y el 2T ya estan entregados.
+//
+// Los identificadores son fijos (pms-123 / comg-pms-123) para que volver a importar no
+// duplique nada: es la unica proteccion real contra apretar el boton dos veces.
+function importarDesdePMS(){
+  if(!RESERVAS_PMS.length){notif('Primero pulsa «Sync PMS»',true);return;}
+  let nuevas=0,gastos=0,yaEstaban=0,sinComision=0;
+  RESERVAS_PMS.forEach(p=>{
+    const idRes='pms-'+(p.pms_id||p.id);
+    // Ya registrada: por identificador, o porque ya existe una entrada de esa habitacion
+    // y esas fechas metida desde un archivo (no se duplica el ingreso).
+    if(RESERVAS.some(r=>r.id===idRes)||findAccountingMatch(p)){yaEstaban++;return;}
+    RESERVAS_EXTRA.push({
+      id:idRes,room:p.room,guest:p.guest,ci:p.ci,co:p.co,
+      fc:p.cobrado_el||undefined,canal:p.canal,
+      bruto:p.bruto,com:p.com||0,neto:(p.neto!=null?p.neto:p.bruto),
+      // El PMS dice como se cobro de verdad. Si no lo dijera (version vieja), se
+      // mantiene lo de siempre en vez de inventarselo.
+      metodo:p.metodo||(p.canal==='directo'?'Bizum/Transf':'OTA'),
+      origen:'pms'
+    });
+    nuevas++;
+    // La comision como GASTO, una linea por cobro.
+    if(p.comision_gasto&&p.comision>0){
+      const idG='comg-'+idRes;
+      if(!GASTOS_VAR.some(g=>g.id===idG)){
+        GASTOS_VAR.push({
+          id:idG,
+          n:'Comisión '+(p.metodo==='OTA'?(p.canal==='booking'?'Booking':'Airbnb'):'Stripe')+' · '+(p.guest||p.room),
+          cat:'financiero',fecha:p.cobrado_el||p.ci,importe:p.comision,
+          metodo:'transferencia',tipo:'v',privado:false,foto:null,fotoRef:null,recur:null
+        });
+        gastos++;
+      }
+    } else if(p.comision_gasto&&(p.comision===null||p.comision===undefined)&&p.canal!=='directo'){
+      // De Booking y Airbnb el PMS no conoce la comision: no se inventa ninguna.
+      sinComision++;
+    }
+  });
+  RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
+  guardarLocal('ing_extra',RESERVAS_EXTRA);
+  if(gastos)guardarLocal('gv5',GASTOS_VAR);
+  renderDashboard();
+  if(document.getElementById('page-habitaciones').classList.contains('on'))renderHabs();
+  const partes=[];
+  if(nuevas)partes.push(nuevas+' reserva(s) traida(s)');
+  if(gastos)partes.push(gastos+' comision(es) apuntada(s) como gasto');
+  if(yaEstaban)partes.push(yaEstaban+' ya estaban');
+  if(sinComision)partes.push('⚠️ '+sinComision+' de OTA sin comision: ponla tú');
+  notif(partes.length?partes.join(' · '):'No habia nada nuevo que traer');
+}
+
 function renderReconBanner(habPeriodMes){
   const banner=document.getElementById('recon-banner');
   if(!RESERVAS_PMS.length){banner.innerHTML='';return;}
@@ -377,7 +437,7 @@ function renderExcTable(pKey){
   const cv=cols.map(c=>Math.abs(comTotal([c]))),cT=cv.reduce((a,b)=>a+b,0);
   const inv=cols.map(c=>ingTotal([c],'neto')),inT=inv.reduce((a,b)=>a+b,0);
   tb+=`<tr class="rowtot"><td class="L stk">TOTAL INGRESOS BRUTOS</td>${ibv.map(v=>`<td class="pos">${fn0(v)}</td>`).join('')}${isFull?`<td class="ct pos">${fn0(ibT)}</td>`:''}</tr>`;
-  tb+=`<tr class="sub rowtot"><td class="L stk">↳ comisiones OTA</td>${cv.map(v=>`<td class="com">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct com">${cT?fn(cT):''}</td>`:''}</tr>`;
+  tb+=`<tr class="sub rowtot"><td class="L stk">↳ comisiones de venta</td>${cv.map(v=>`<td class="com">${v?fn(v):''}</td>`).join('')}${isFull?`<td class="ct com">${cT?fn(cT):''}</td>`:''}</tr>`;
   tb+=`<tr class="netorow"><td class="L stk">INGRESOS NETOS</td>${inv.map(v=>`<td>${fn0(v)}</td>`).join('')}${isFull?`<td class="ct">${fn0(inT)}</td>`:''}</tr>`;
   const gfv=cols.map(c=>gFijo([c])),gfT=gfv.reduce((a,b)=>a+b,0);
   tb+=`<tr class="sec coll-hdr" onclick="toggleRows('gf',this)"><td class="stk" colspan="${colSpan}">▸ GASTOS FIJOS <span style="font-size:9px;color:var(--text3);margin-left:5px" id="lbl-gf">▶ expandir</span></td></tr>`;
@@ -1512,7 +1572,7 @@ function renderInforme(){
   });
   const ibT=ingTotal(Q1m,'bruto'),cA=Math.abs(comTotal(Q1m)),inT=ingTotal(Q1m,'neto');
   h+=`<tr class="tot"><td>TOTAL INGRESOS BRUTOS</td>${Q1m.map(m=>`<td class="pos">${fn0(ingTotal([m],'bruto'))}</td>`).join('')}<td class="pos">${fn0(ibT)}</td></tr>`;
-  h+=`<tr class="tot"><td style="padding-left:12px;font-size:10px">↳ comisiones OTA</td>${Q1m.map(m=>`<td class="neg dim">${Math.abs(comTotal([m]))?fn(Math.abs(comTotal([m]))):''}</td>`).join('')}<td class="neg">${cA?fn(cA):''}</td></tr>`;
+  h+=`<tr class="tot"><td style="padding-left:12px;font-size:10px">↳ comisiones de venta</td>${Q1m.map(m=>`<td class="neg dim">${Math.abs(comTotal([m]))?fn(Math.abs(comTotal([m]))):''}</td>`).join('')}<td class="neg">${cA?fn(cA):''}</td></tr>`;
   h+=`<tr class="tot" style="background:var(--green-bg)"><td style="color:var(--green)">INGRESOS NETOS</td>${Q1m.map(m=>`<td class="pos">${fn0(ingTotal([m],'neto'))}</td>`).join('')}<td class="pos">${fn0(inT)}</td></tr>`;
   h+=`<tr class="sec"><td colspan="${ncols}">▸ GASTOS FIJOS</td></tr>`;
   visibleGastosFijos().forEach(g=>{const tot=Q1m.reduce((s,m)=>s+(g.m[m]||0),0);h+=`<tr><td>${g.n}</td>${Q1m.map(m=>`<td class="${g.m[m]?'neg':''}">${g.m[m]?fn(g.m[m]):''}${tieneFotoFijo(g,m)?` <span style="font-size:9px;cursor:pointer;color:var(--gold)" onclick="showFotoFijo('${g.id}',${m})" title="Ver justificante">📷</span>`:''}</td>`).join('')}<td class="neg">${tot?fn(tot):''}</td></tr>`;});
