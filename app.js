@@ -2391,7 +2391,12 @@ function juntarPorId(k,cloudArr,localArr){
     const l=x&&porId[x.id];
     return (l&&l.foto&&!x.foto&&!x.fotoRef&&!x.fotoUrl)?{...x,foto:l.foto}:x;
   });
-  const propios=locales.filter(x=>x&&pend.includes(x.id)&&!idsCloud.has(x.id)&&!fuera.has(x.id));
+  // ⚠️ 9 sep 2026 — antes aquí ponía `pend.includes(x.id)`: lo que este aparato tenía y
+  // la nube no, se TIRABA salvo que estuviera en la lista de pendientes… y esa lista se
+  // vaciaba en cuanto una subida salía bien. Bastaba con recargar para perder lo tuyo.
+  // Ahora se conserva TODO lo del aparato; para que algo desaparezca de verdad tiene que
+  // estar en las lápidas (`del_*`), que es donde se apunta lo que se borra a propósito.
+  const propios=locales.filter(x=>x&&x.id&&!idsCloud.has(x.id)&&!fuera.has(x.id));
   localStorage.setItem('pend_'+k,JSON.stringify(pend.filter(id=>!idsCloud.has(id))));
   return fusion.concat(propios);
 }
