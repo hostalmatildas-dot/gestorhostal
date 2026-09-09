@@ -11,3 +11,6 @@ memory/
 
 # Copias de seguridad sueltas del editor (no deben publicarse)
 *.bak-*
+
+# Informes con datos financieros personales — NO publicar
+informes/
