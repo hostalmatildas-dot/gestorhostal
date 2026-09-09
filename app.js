@@ -75,11 +75,27 @@ function avisoNube(msg){
   const sd=document.getElementById('sync-dot');
   if(sd){sd.style.display='inline-block';sd.style.background='var(--red)';}
 }
+// El punto verde solo se pone verde cuando la nube tiene YA lo mismo que este aparato.
+// Antes decía "conectado", no "guardado": por eso nada avisó de que lo del móvil llevaba
+// tres días sin subir (9 sep 2026).
+// Pendientes DE VERDAD: los que siguen existiendo en la libreta de este aparato. Un id
+// apuntado y luego borrado dejaría el cartel encendido para siempre.
+function _pendientesReales(){
+  const vivos=new Set([...GASTOS_VAR,...RESERVAS_EXTRA].map(x=>x&&x.id));
+  return sj('pend_gv5',[]).filter(id=>vivos.has(id)).length
+       + sj('pend_ing_extra',[]).filter(id=>vivos.has(id)).length;
+}
 function okNube(){
+  const pend=_pendientesReales();
   const el=document.getElementById('sync-warn');
-  if(el)el.style.display='none';
   const sd=document.getElementById('sync-dot');
-  if(sd){sd.style.display='inline-block';sd.style.background='var(--green)';}
+  if(pend){
+    if(sd){sd.style.display='inline-block';sd.style.background='var(--gold)';sd.title=pend+' apunte(s) sin subir';}
+    if(el){el.textContent=`⚠️ ${pend} apunte(s) siguen SOLO en este aparato: no se han guardado en la nube.`;el.style.display='block';}
+    return;
+  }
+  if(el)el.style.display='none';
+  if(sd){sd.style.display='inline-block';sd.style.background='var(--green)';sd.title='Todo guardado en la nube';}
 }
 // Mes de entrada de la reserva (solo para listados; el dinero se imputa con impMes)
 function getMes(r){return pdate(r.ci).getMonth()+1;}
@@ -771,7 +787,18 @@ function renderGastos(){
   document.getElementById('tot-c').textContent=fn(totC);
 }
 function toggleG(id){document.getElementById('body-'+id).classList.toggle('open');document.getElementById('arr-'+id).classList.toggle('open');}
-function delGasto(i){if(!confirm('¿Eliminar?'))return;const g=GASTOS_VAR[i];if(g)borrarFoto(g.fotoRef||g.fotoUrl);GASTOS_VAR.splice(i,1);guardarLocal('gv5',GASTOS_VAR);renderGastos();renderDashboard();notif('Gasto eliminado');}
+// ── Lápidas: qué se borró a propósito ────────────────────────────────────────────
+// Al subir ya no se machaca la nube: se JUNTAN las dos libretas por su número de apunte
+// (ver subirJuntando). Sin esta lista, un apunte borrado en un aparato volvería a
+// aparecer en cuanto el otro subiera su copia, que todavía lo tenía.
+function _tumba(k,id){
+  if(!id)return;
+  const t=sj('del_'+k,[]);
+  if(!t.includes(id)){t.push(id);guardarLocal('del_'+k,t);}
+}
+function _estaBorrado(k,id){return sj('del_'+k,[]).includes(id);}
+
+function delGasto(i){if(!confirm('¿Eliminar?'))return;const g=GASTOS_VAR[i];if(g)borrarFoto(g.fotoRef||g.fotoUrl);if(g)_tumba('gv5',g.id);GASTOS_VAR.splice(i,1);guardarLocal('gv5',GASTOS_VAR);renderGastos();renderDashboard();notif('Gasto eliminado');}
 
 // ═══════════ MODALES ═══════════
 let _gMet='bizum',_gTipo='v',_canal='booking',_iMet='booking/airbnb';
@@ -1187,7 +1214,7 @@ async function editGasto(id){
 function delIngreso(id){
   if(!confirm('¿Eliminar este ingreso?'))return;
   const idx=RESERVAS_EXTRA.findIndex(x=>x.id===id);
-  if(idx>-1) RESERVAS_EXTRA.splice(idx,1);
+  if(idx>-1){_tumba('ing_extra',id);RESERVAS_EXTRA.splice(idx,1);}
   RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
   guardarLocal('ing_extra',RESERVAS_EXTRA);
   renderHabs(); renderDashboard();
@@ -2341,8 +2368,20 @@ function juntarFijos(cloudArr,localArr){
     return Object.keys(faltan).length?{...g,fotoM:{...(g.fotoM||{}),...faltan}}:g;
   });
 }
+// Se queda con las lápidas que trae la nube: un apunte borrado en el móvil tiene que
+// seguir borrado en el ordenador, y al revés.
+function _guardarLapidasDeLaNube(d){
+  ['gv5','ing_extra','gf6'].forEach(k=>{
+    const remotas=d&&d['del_'+k];
+    if(!Array.isArray(remotas)||!remotas.length)return;
+    const juntas=[...new Set([...sj('del_'+k,[]),...remotas])];
+    if(juntas.length!==sj('del_'+k,[]).length)guardarLocal('del_'+k,juntas);
+  });
+}
+
 function juntarPorId(k,cloudArr,localArr){
-  const cloud=Array.isArray(cloudArr)?cloudArr:[];
+  const fuera=new Set(sj('del_'+k,[]));
+  const cloud=(Array.isArray(cloudArr)?cloudArr:[]).filter(x=>x&&!fuera.has(x.id));
   const idsCloud=new Set(cloud.map(x=>x&&x.id));
   const pend=_pend(k);
   const locales=Array.isArray(localArr)?localArr:[];
@@ -2352,7 +2391,7 @@ function juntarPorId(k,cloudArr,localArr){
     const l=x&&porId[x.id];
     return (l&&l.foto&&!x.foto&&!x.fotoRef&&!x.fotoUrl)?{...x,foto:l.foto}:x;
   });
-  const propios=locales.filter(x=>x&&pend.includes(x.id)&&!idsCloud.has(x.id));
+  const propios=locales.filter(x=>x&&pend.includes(x.id)&&!idsCloud.has(x.id)&&!fuera.has(x.id));
   localStorage.setItem('pend_'+k,JSON.stringify(pend.filter(id=>!idsCloud.has(id))));
   return fusion.concat(propios);
 }
@@ -2432,6 +2471,7 @@ async function initFirebase(){
     if(snap.exists()){
       _syncing=true;
       const d=snap.data();
+      _guardarLapidasDeLaNube(d);
       if(d.ing_extra){RESERVAS_EXTRA=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
       if(d.gv5){GASTOS_VAR=juntarPorId('gv5',d.gv5,GASTOS_VAR);guardarLocal('gv5',GASTOS_VAR);}
       if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);}
@@ -2453,6 +2493,7 @@ async function initFirebase(){
         if(!psnap.exists())return;
         const d=psnap.data();
         if(d.writtenBy===_deviceId)return; // our own write, skip
+        _guardarLapidasDeLaNube(d);
         _syncing=true;
         let changed=false;
         if(d.ing_extra){const nx=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);if(JSON.stringify(nx)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=nx;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);changed=true;}}
@@ -2488,39 +2529,83 @@ async function initFirebase(){
   }
 }
 
+// Junta la libreta de la nube con la de este aparato, apunte por apunte (por su `id`).
+// Gana el aparato cuando los dos tienen el mismo apunte: es donde se acaba de tocar.
+// Lo borrado a propósito (las lápidas) no vuelve, venga de donde venga.
+function _juntarParaSubir(k,cloudArr,localArr){
+  const cloud=Array.isArray(cloudArr)?cloudArr:[];
+  const locales=Array.isArray(localArr)?localArr:[];
+  const fuera=new Set(sj('del_'+k,[]));
+  const porId=new Map();
+  cloud.forEach(x=>{if(x&&x.id&&!fuera.has(x.id))porId.set(x.id,x);});
+  locales.forEach(x=>{if(x&&x.id&&!fuera.has(x.id))porId.set(x.id,x);});
+  return [...porId.values()];
+}
+
+// ⚠️ 9 sep 2026 — POR QUÉ ESTO NO PUEDE VOLVER A SER UN setDoc A SECAS:
+// antes cada aparato mandaba su libreta ENTERA encima de la de la nube, así que el
+// último que escribía BORRABA lo que el otro había apuntado. Así desapareció un gasto
+// de 377 € metido en el móvil, y las comisiones traídas del PMS. La red de seguridad
+// (`pend_*`) no valía: se vaciaba entera en cuanto una subida salía bien.
+let _subiendo=false, _subirOtraVez=false;
 async function syncToFirebase(){
   if(!_syncEnabled||!_db||_syncing)return;
+  // Si ya hay una subida en marcha, no se descarta esta: se encola para después.
+  if(_subiendo){_subirOtraVez=true;return;}
+  _subiendo=true;
   try{
-    const {doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const {doc,setDoc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const ref=doc(_db,'hostal','datos');
     const ts=Date.now();
     const deviceId=localStorage.getItem('_deviceId')||'unknown';
     localStorage.setItem('_lastSync',String(ts));
+    // Primero se MIRA lo que hay en la nube, para juntarlo en vez de machacarlo.
+    let nube={};
+    try{ const snap=await getDoc(ref); if(snap.exists())nube=snap.data()||{}; }
+    catch(e0){
+      if(e0&&e0.code==='permission-denied'&&await askLogin()){
+        const snap=await getDoc(ref); if(snap.exists())nube=snap.data()||{};
+      } else throw e0;
+    }
+    const fijosJuntos=_juntarParaSubir('gf6',nube.gf6,sinFotosFijos(GASTOS_FIJOS));
     const paquete={
-      ing_extra:sinFotos(RESERVAS_EXTRA),
-      gv5:sinFotos(GASTOS_VAR),
-      gf6:sinFotosFijos(GASTOS_FIJOS),
-      gf_deleted:sj('gf_deleted',[]),
+      ing_extra:_juntarParaSubir('ing_extra',nube.ing_extra,sinFotos(RESERVAS_EXTRA)),
+      gv5:_juntarParaSubir('gv5',nube.gv5,sinFotos(GASTOS_VAR)),
+      gf6:fijosJuntos,
+      gf_deleted:[...new Set([...(nube.gf_deleted||[]),...sj('gf_deleted',[])])],
+      del_gv5:[...new Set([...(nube.del_gv5||[]),...sj('del_gv5',[])])],
+      del_ing_extra:[...new Set([...(nube.del_ing_extra||[]),...sj('del_ing_extra',[])])],
+      del_gf6:[...new Set([...(nube.del_gf6||[]),...sj('del_gf6',[])])],
       updated:ts,
       writtenBy:deviceId
     };
     try{
-      await setDoc(doc(_db,'hostal','datos'),paquete);
+      await setDoc(ref,paquete);
     }catch(e1){
       // Sesión caducada (a Safari en el móvil se le olvida cada pocos días): pedirla y
       // reintentar UNA vez. Antes esto fallaba en silencio y los tickets no subían.
-      if(e1&&e1.code==='permission-denied'&&await askLogin()) await setDoc(doc(_db,'hostal','datos'),paquete);
+      if(e1&&e1.code==='permission-denied'&&await askLogin()) await setDoc(ref,paquete);
       else throw e1;
     }
-    // Subió bien: ya no hace falta guardar nada como "pendiente de subir"
-    localStorage.setItem('pend_gv5','[]');
-    localStorage.setItem('pend_ing_extra','[]');
+    // Solo salen de "pendientes" los apuntes que de verdad han viajado en ESTE paquete.
+    // Vaciar la lista entera a ciegas era lo que dejaba lo nuevo sin red al bajar.
+    _quitarDePendientes('gv5',paquete.gv5);
+    _quitarDePendientes('ing_extra',paquete.ing_extra);
     okNube();
   }catch(e){
     console.error('Sync error:',e);
     avisoNube(e&&e.code==='permission-denied'
       ? 'No has iniciado sesión: lo que guardes se queda SOLO en este aparato.'
       : 'No se está guardando en la nube. Lo último que has metido está SOLO en este aparato.');
+  }finally{
+    _subiendo=false;
+    if(_subirOtraVez){_subirOtraVez=false;setTimeout(syncToFirebase,300);}
   }
+}
+function _quitarDePendientes(k,subidos){
+  const viajaron=new Set((subidos||[]).map(x=>x&&x.id));
+  const quedan=sj('pend_'+k,[]).filter(id=>!viajaron.has(id));
+  localStorage.setItem('pend_'+k,JSON.stringify(quedan));
 }
 
 // Auto-sync on every localStorage write — but not during incoming sync
