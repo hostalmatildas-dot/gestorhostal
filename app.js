@@ -315,8 +315,17 @@ function findPMSMatch(r){
 }
 
 function findAccountingMatch(p){
-  // Busca entrada contable para una reserva PMS
-  return visibleReservas().find(r=>r.room===p.room && dayDiff(p.ci,r.ci)<=1);
+  // Busca entrada contable para una reserva PMS. Antes solo miraba la habitación, y eso
+  // duplicó 16 reservas de jul/ago 2026 (2.174 €): las metidas desde los archivos de las
+  // OTAs traen otra habitación —o ninguna, porque el informe de Booking no la dice— y no
+  // casaban con las del PMS. Con la entrada a ≤1 día, ahora vale cualquiera de estas
+  // señales: misma habitación, nombre de huésped parecido, o sin habitación y mismo importe.
+  return visibleReservas().find(r=>{
+    if(!r.ci||!p.ci||dayDiff(p.ci,r.ci)>1)return false;
+    if(r.room&&p.room&&r.room===p.room)return true;
+    if(_guestSim(p.guest,r.guest))return true;
+    return !r.room && Math.abs((r.bruto||0)-(p.bruto||0))<0.5;
+  });
 }
 
 function reconcileStatus(r){
@@ -390,9 +399,12 @@ function importarDesdePMS(auto=false){
   RESERVAS_PMS.forEach(p=>{
     if(!p.ci||p.ci<IMPORTAR_PMS_DESDE){fueraDePlazo++;return;}
     const idRes='pms-'+(p.pms_id||p.id);
-    // Ya registrada: por identificador, o porque ya existe una entrada de esa habitacion
-    // y esas fechas metida desde un archivo (no se duplica el ingreso).
+    // Ya registrada: por identificador, o porque ya existe una entrada de esas fechas
+    // metida desde un archivo (no se duplica el ingreso).
     if(RESERVAS.some(r=>r.id===idRes)||findAccountingMatch(p)){yaEstaban++;return;}
+    // Borrada a propósito: no se repone. Pasó con dos reservas que Booking dio por
+    // canceladas y el PMS todavía tenía por buenas: al abrir la app volvían solas.
+    if(_estaBorrado('ing_extra',idRes)){yaEstaban++;return;}
     RESERVAS_EXTRA.push({
       id:idRes,room:p.room,guest:p.guest,ci:p.ci,co:p.co,
       fc:p.cobrado_el||undefined,canal:p.canal,
