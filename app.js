@@ -287,6 +287,7 @@ async function fetchPMSData(silencioso=false){
     if(r.status===401){localStorage.removeItem('appSecret');throw new Error('clave');}
     if(!r.ok) throw new Error(r.status);
     RESERVAS_PMS=await r.json();
+    await fetchGastosOTA(silencioso);
     pmsLastSync=new Date();
     const hh=pmsLastSync.getHours().toString().padStart(2,'0');
     const mm=pmsLastSync.getMinutes().toString().padStart(2,'0');
@@ -346,6 +347,31 @@ function reconcileStatus(r){
 // meterla ahora cambiaría unos totales ya presentados. Decisión de Glenda, 6 sep 2026.
 const IMPORTAR_PMS_DESDE='2026-07-01';
 
+// Gastos del portal que NO van por reserva sino por mes entero: hoy el «Cargo por pago»
+// de Booking. Los manda el PMS ya con su fecha e importe, sacados del informe mensual.
+let GASTOS_OTA=[];
+async function fetchGastosOTA(silencioso=false){
+  const secret=silencioso?(localStorage.getItem('appSecret')||''):getAppSecret();
+  if(!secret)return false;
+  try{
+    const r=await fetch(`${PMS_PROXY_URL}?year=2026&que=gastos-ota`,{headers:{'x-app-secret':secret}});
+    if(!r.ok)throw new Error(r.status);
+    GASTOS_OTA=await r.json();
+    return true;
+  }catch(e){ console.error('gastos-ota:',e); return false; }
+}
+function traerGastosOTA(){
+  let n=0;
+  GASTOS_OTA.forEach(g=>{
+    if(!g.fecha||g.fecha<IMPORTAR_PMS_DESDE)return;   // el 1T y el 2T no se tocan
+    if(GASTOS_VAR.some(x=>x.id===g.id))return;
+    GASTOS_VAR.push({id:g.id,n:g.concepto,cat:'financiero',fecha:g.fecha,importe:g.importe,
+      metodo:'transferencia',tipo:'v',privado:false,foto:null,fotoRef:null,recur:null});
+    n++;
+  });
+  return n;
+}
+
 // Cuántas traería ahora mismo, sin tocar nada. Sirve para el freno de mano de abajo.
 function contarNuevasPMS(){
   return RESERVAS_PMS.filter(p=>p.ci&&p.ci>=IMPORTAR_PMS_DESDE
@@ -397,6 +423,7 @@ function importarDesdePMS(auto=false){
       sinComision++;
     }
   });
+  gastos+=traerGastosOTA();
   RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
   guardarLocal('ing_extra',RESERVAS_EXTRA);
   if(gastos)guardarLocal('gv5',GASTOS_VAR);

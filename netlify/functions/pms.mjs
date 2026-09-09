@@ -44,9 +44,15 @@ export default async (req) => {
     return json({ error: { message: 'Año no válido' } }, 400);
   }
 
+  // Qué se pide: las reservas (por defecto) o los gastos de portal que van por mes.
+  // Lista cerrada a propósito: nunca se reenvía al PMS una ruta que venga de fuera.
+  const RUTAS = { reservations: 'accounting/reservations', 'gastos-ota': 'accounting/gastos-ota' };
+  const ruta = RUTAS[new URL(req.url).searchParams.get('que') || 'reservations'];
+  if (!ruta) return json({ error: { message: 'No sé qué me pides' } }, 400);
+
   let r;
   try {
-    r = await fetch(`${PMS_BASE}/accounting/reservations?year=${year}`, {
+    r = await fetch(`${PMS_BASE}/${ruta}?year=${year}`, {
       headers: { 'X-Gestor-API-Key': process.env.GESTOR_API_KEY },
     });
   } catch (e) {
