@@ -2245,7 +2245,17 @@ const _fb={
   messagingSenderId:"757250291767",
   appId:"1:757250291767:web:c0de75a7a70b7ff875e7b2"
 };
-let _db=null,_syncEnabled=false,_syncing=false;
+let _db=null,_syncEnabled=false,_syncing=false,_syncingDesde=0,_reintentoSubir=null;
+// El candado evita que una bajada de la nube y una subida se pisen. Si algo se tuerce
+// mientras está echado, antes se quedaba echado PARA SIEMPRE y la app dejaba de subir
+// sin avisar (23-sep-2026: 11 fotos subidas y ningún apunte). Ahora se suelta solo.
+function echarCandado(){_syncing=true;_syncingDesde=Date.now();}
+function soltarCandado(){_syncing=false;_syncingDesde=0;}
+function candadoEchado(){
+  if(!_syncing)return false;
+  if(Date.now()-_syncingDesde>30000){soltarCandado();return false;} // red de seguridad
+  return true;
+}
 
 // ── Almacén de justificantes (fichitas sueltas en Firestore) ──────────────
 // Las fotos NO pueden viajar dentro del paquete de datos: la nube corta a 1 MB por
@@ -2396,15 +2406,25 @@ function _pend(k){return sj('pend_'+k,[]);}
 function juntarFijos(cloudArr,localArr){
   const cloud=Array.isArray(cloudArr)?cloudArr:[];
   const porId={};(localArr||[]).forEach(g=>{if(g&&g.id)porId[g.id]=g;});
+  // Se rescatan los TRES sitios donde puede estar la foto de un mes: dentro del dato
+  // (`fotoM`, estilo viejo) y las dos señales que apuntan a su fichita (`fotoRefM`,
+  // `fotoUrlM`). Antes solo se miraba `fotoM`, así que una foto hecha desde el móvil con
+  // el estilo nuevo se perdía en cuanto la nube contestaba (23-sep-2026: la comunidad).
+  const MAPAS=['fotoM','fotoRefM','fotoUrlM'];
   return cloud.map(g=>{
     const l=g&&porId[g.id];
-    if(!l||!l.fotoM)return g;
-    const faltan={};
-    Object.keys(l.fotoM).forEach(m=>{
-      const yaEnNube=(g.fotoM&&g.fotoM[m])||(g.fotoRefM&&g.fotoRefM[m])||(g.fotoUrlM&&g.fotoUrlM[m]);
-      if(l.fotoM[m]&&!yaEnNube)faltan[m]=l.fotoM[m];
+    if(!l)return g;
+    const extra={};
+    MAPAS.forEach(k=>{
+      const mios=l[k];if(!mios)return;
+      const faltan={};
+      Object.keys(mios).forEach(m=>{
+        const yaEnNube=MAPAS.some(k2=>g[k2]&&g[k2][m]);
+        if(mios[m]&&!yaEnNube)faltan[m]=mios[m];
+      });
+      if(Object.keys(faltan).length)extra[k]={...(g[k]||{}),...faltan};
     });
-    return Object.keys(faltan).length?{...g,fotoM:{...(g.fotoM||{}),...faltan}}:g;
+    return Object.keys(extra).length?{...g,...extra}:g;
   });
 }
 // Se queda con las lápidas que trae la nube: un apunte borrado en el móvil tiene que
@@ -2513,13 +2533,14 @@ async function initFirebase(){
       else throw e;
     }
     if(snap.exists()){
-      _syncing=true;
-      const d=snap.data();
-      _guardarLapidasDeLaNube(d);
-      if(d.ing_extra){RESERVAS_EXTRA=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
-      if(d.gv5){GASTOS_VAR=juntarPorId('gv5',d.gv5,GASTOS_VAR);guardarLocal('gv5',GASTOS_VAR);}
-      if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);}
-      _syncing=false;
+      echarCandado();
+      try{
+        const d=snap.data();
+        _guardarLapidasDeLaNube(d);
+        if(d.ing_extra){RESERVAS_EXTRA=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
+        if(d.gv5){GASTOS_VAR=juntarPorId('gv5',d.gv5,GASTOS_VAR);guardarLocal('gv5',GASTOS_VAR);}
+        if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);}
+      }finally{soltarCandado();}
       cleanupInventedData();
     }
     renderDashboard();
@@ -2530,7 +2551,7 @@ async function initFirebase(){
 
     // POLLING every 15s instead of onSnapshot (works with all browsers/blockers)
     async function pollFirebase(){
-      if(!_syncEnabled||!_db||_syncing)return;
+      if(!_syncEnabled||!_db||candadoEchado())return;
       try{
         const {doc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
         const psnap=await getDoc(doc(_db,'hostal','datos'));
@@ -2538,12 +2559,13 @@ async function initFirebase(){
         const d=psnap.data();
         if(d.writtenBy===_deviceId)return; // our own write, skip
         _guardarLapidasDeLaNube(d);
-        _syncing=true;
+        echarCandado();
         let changed=false;
-        if(d.ing_extra){const nx=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);if(JSON.stringify(nx)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=nx;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);changed=true;}}
-        if(d.gv5){const nx=juntarPorId('gv5',d.gv5,GASTOS_VAR);if(JSON.stringify(nx)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=nx;guardarLocal('gv5',GASTOS_VAR);changed=true;}}
-        if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);if(JSON.stringify(nf)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);changed=true;}}
-        _syncing=false;
+        try{
+          if(d.ing_extra){const nx=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);if(JSON.stringify(nx)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=nx;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);changed=true;}}
+          if(d.gv5){const nx=juntarPorId('gv5',d.gv5,GASTOS_VAR);if(JSON.stringify(nx)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=nx;guardarLocal('gv5',GASTOS_VAR);changed=true;}}
+          if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);if(JSON.stringify(nf)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);changed=true;}}
+        }finally{soltarCandado();}
         cleanupInventedData();
         if(changed){
           ['dashboard','habitaciones','gastos','informe'].forEach(id=>{
@@ -2556,7 +2578,7 @@ async function initFirebase(){
           });
           notif('🔄 Sincronizado');
         }
-      }catch(e){_syncing=false;}
+      }catch(e){soltarCandado();}
     }
     // Los datos se meten pocas veces al día: comprobar cambios cada 5 min y al volver a la pestaña
     setInterval(pollFirebase, 300000);
@@ -2593,7 +2615,10 @@ function _juntarParaSubir(k,cloudArr,localArr){
 // (`pend_*`) no valía: se vaciaba entera en cuanto una subida salía bien.
 let _subiendo=false, _subirOtraVez=false;
 async function syncToFirebase(){
-  if(!_syncEnabled||!_db||_syncing)return;
+  if(!_syncEnabled||!_db)return;
+  // Si justo ahora se está metiendo lo que baja de la nube, NO se tira esta subida:
+  // se vuelve a intentar en un segundo. Antes se descartaba en silencio.
+  if(candadoEchado()){clearTimeout(_reintentoSubir);_reintentoSubir=setTimeout(syncToFirebase,1000);return;}
   // Si ya hay una subida en marcha, no se descarta esta: se encola para después.
   if(_subiendo){_subirOtraVez=true;return;}
   _subiendo=true;
