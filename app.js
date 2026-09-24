@@ -2309,18 +2309,36 @@ function justificantesPeriodo(){
   const Q1m=P.cols;
   const tri=P.slug.replace('q','T').toUpperCase();
   const out=[];
+  // El importe va en el nombre: le viene bien a la gestoría y, sobre todo, distingue dos
+  // tickets de la misma tienda el mismo día.
+  const eur=v=>(Number(v)||0).toFixed(2).replace('.',',');
   visibleGastosVar().forEach(g=>{
     const m=gMes(g);
     if(tieneFoto(g)&&Q1m.includes(m))
-      out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_${g.fecha}.jpg`,ref:g});
+      out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_${g.fecha}_${eur(g.importe)}EUR.jpg`,ref:g});
   });
   visibleGastosFijos().forEach(g=>{
     Q1m.forEach(m=>{
       if(tieneFotoFijo(g,m))
-        out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_fijo.jpg`,ref:fotoRefFijo(g,m)});
+        out.push({mes:m,name:`${tri}_${MN[m]}_${_slugFile(g.n)}_fijo_${eur(g.m&&g.m[m])}EUR.jpg`,ref:fotoRefFijo(g,m)});
     });
   });
-  return out.sort((a,b)=>a.mes-b.mes);
+  out.sort((a,b)=>a.mes-b.mes);
+  // ⚠️ 24 sep 2026 — DOS ARCHIVOS NO PUEDEN LLAMARSE IGUAL.
+  // El nombre se recorta a 40 letras del concepto, así que dos compras parecidas de la
+  // misma tienda el mismo día y por el mismo importe salían con el MISMO nombre. Al
+  // hacer el ZIP, el segundo pisaba al primero: un justificante desaparecía sin decir
+  // nada y la gestoría recibía uno de menos. Aquí se les pone un número al final.
+  const usados=new Set();
+  out.forEach(it=>{
+    if(!usados.has(it.name)){usados.add(it.name);return;}
+    const p=it.name.lastIndexOf('.');
+    const base=it.name.slice(0,p),ext=it.name.slice(p);
+    let n=2;while(usados.has(`${base}_${n}${ext}`))n++;
+    it.name=`${base}_${n}${ext}`;
+    usados.add(it.name);
+  });
+  return out;
 }
 
 async function exportJustificantes(){
