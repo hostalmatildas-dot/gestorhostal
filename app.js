@@ -2364,32 +2364,85 @@ async function exportJustificantes(){
 function notif(msg,isErr){const n=document.getElementById('notif');n.textContent=(isErr?'✕ ':'✓ ')+msg;n.classList.toggle('err',!!isErr);n.classList.add('on');setTimeout(()=>n.classList.remove('on'),isErr?5000:3000);}
 
 // ═══════════ COPIA DE SEGURIDAD ═══════════
-function backupExport(){
-  const data={version:1,fecha:new Date().toISOString(),
-    ing_extra:RESERVAS_EXTRA,gv5:GASTOS_VAR,gf6:GASTOS_FIJOS,gf_deleted:sj('gf_deleted',[])};
+// ⚠️ 24 sep 2026 — LA COPIA TIENE QUE LLEVAR LAS FOTOS DENTRO.
+// Desde agosto las fotos no viven dentro del gasto: viven en su fichita de la nube y el
+// gasto solo guarda la señal para encontrarla ('fs:…'). La copia guardaba únicamente esas
+// señales, así que era una copia de seguridad **sin un solo justificante**: si la nube se
+// pierde, se recuperan los importes y no queda ni un papel que enseñar a la gestoría.
+// Una copia que no sirve el día que hace falta no es una copia.
+// También se guardan las lápidas (lo borrado a propósito); si no, al restaurar en un
+// aparato nuevo volvían solos los apuntes duplicados que se habían quitado.
+// Devuelve [{ref, img}] con TODAS las fotos, vengan de donde vengan
+async function _todasLasFotos(){
+  const out=[],vistos=new Set();
+  // Solo las que viven FUERA del dato. Las que van pegadas dentro (estilo viejo) ya
+  // viajan en la copia dentro de su propio gasto: meterlas otra vez sería duplicar peso.
+  const meter=async(ref,g)=>{
+    if(!ref||vistos.has(ref))return;
+    vistos.add(ref);
+    const img=await getFotoData(g);
+    if(img)out.push({ref,img});
+  };
+  for(const g of GASTOS_VAR)await meter(g.fotoRef||g.fotoUrl,g);
+  for(const g of GASTOS_FIJOS)for(let m=1;m<=12;m++){
+    if(!tieneFotoFijo(g,m))continue;
+    const f=fotoRefFijo(g,m);
+    await meter(f.fotoRef||f.fotoUrl,f);
+  }
+  return out;
+}
+async function backupExport(){
+  notif('Preparando la copia (también las fotos)…');
+  let fotos={};
+  try{
+    for(const f of await _todasLasFotos())fotos[f.ref]=f.img;
+  }catch(e){
+    console.error('fotos en la copia:',e);
+    if(!confirm('No se han podido recuperar todas las fotos.\n\n¿Descargo la copia igualmente, SIN los justificantes?'))return;
+    fotos={};
+  }
+  const data={version:2,fecha:new Date().toISOString(),
+    ing_extra:RESERVAS_EXTRA,gv5:GASTOS_VAR,gf6:GASTOS_FIJOS,gf_deleted:sj('gf_deleted',[]),
+    del_gv5:sj('del_gv5',[]),del_ing_extra:sj('del_ing_extra',[]),del_gf6:sj('del_gf6',[]),
+    fotos};
   const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='copia_gestor_hostal_'+new Date().toISOString().slice(0,10)+'.json';
+  a.download='copia_gestor_hostal_'+hoyISO()+'.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  notif('Copia de seguridad descargada');
+  const n=Object.keys(fotos).length;
+  notif(`Copia descargada · ${n} justificante${n===1?'':'s'} dentro (${(blob.size/1048576).toFixed(1)} MB)`);
 }
 function backupImport(inp){
   const f=inp.files&&inp.files[0]; if(!f)return;
   const rd=new FileReader();
-  rd.onload=()=>{
+  rd.onload=async()=>{
     try{
       const d=JSON.parse(rd.result);
       if(!d||typeof d!=='object'||(!Array.isArray(d.ing_extra)&&!Array.isArray(d.gv5)&&!Array.isArray(d.gf6)))
         throw new Error('el archivo no parece una copia del gestor');
-      if(!confirm('¿Reemplazar los datos actuales con la copia del '+((d.fecha||'').slice(0,10)||'¿?')+'? El cambio también se sincroniza a los demás dispositivos.'))return;
+      const nF=d.fotos?Object.keys(d.fotos).length:0;
+      if(!confirm('¿Reemplazar los datos actuales con la copia del '+((d.fecha||'').slice(0,10)||'¿?')+'?\n\n'
+        +(nF?`Trae ${nF} justificante(s), que volverán a su sitio.`:'⚠️ Esta copia NO lleva fotos: los justificantes que ya no estén en la nube no se recuperan.')
+        +'\n\nEl cambio también se sincroniza a los demás dispositivos.'))return;
+      // Las fotos primero: si un apunte apunta a una foto, más vale que la foto ya esté
+      let puestas=0,fallidas=0;
+      for(const [ref,img] of Object.entries(d.fotos||{})){
+        if(!ref.startsWith('fs:')){_fotoCache[ref]=img;continue;}
+        const r=await subirFoto(img,ref.slice(3));
+        if(r)puestas++;else{fallidas++;_fotoCache[ref]=img;}
+      }
       if(Array.isArray(d.gf_deleted))guardarLocal('gf_deleted',d.gf_deleted);
+      // Lo borrado a propósito sigue borrado: si no, en un aparato nuevo volverían solos
+      // los apuntes duplicados que se habían quitado.
+      ['del_gv5','del_ing_extra','del_gf6'].forEach(k=>{if(Array.isArray(d[k]))guardarLocal(k,d[k]);});
       if(Array.isArray(d.ing_extra)){RESERVAS_EXTRA=d.ing_extra;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
       if(Array.isArray(d.gv5)){GASTOS_VAR=d.gv5;guardarLocal('gv5',GASTOS_VAR);}
       if(Array.isArray(d.gf6)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...d.gf6);guardarLocal('gf6',GASTOS_FIJOS);}
       renderDashboard();renderGastos();
-      notif('Copia restaurada');
+      notif('Copia restaurada'+(puestas?` · ${puestas} justificante(s) repuestos`:''));
+      if(fallidas)avisoNube(`${fallidas} foto(s) no se han podido devolver a la nube: por ahora solo están en este aparato.`);
     }catch(e){notif('No se pudo importar: '+e.message,true);}
     finally{inp.value='';}
   };
