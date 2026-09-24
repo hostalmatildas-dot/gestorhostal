@@ -43,6 +43,56 @@ function hoyISO(){return isoLocal(new Date());}
 // Fecha a la española SOLO para mostrar: 2026-02-13 → 13/02/2026.
 // Por dentro se sigue guardando en formato ordenador (YYYY-MM-DD), que es el que ordena bien.
 function fdate(s){const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||''));return m?`${m[3]}/${m[2]}/${m[1]}`:'—';}
+
+// ═══════════ LA FECHA SE LEE A LA ESPAÑOLA ═══════════
+// 24-sep-2026. En un papel español, 01/09/2026 es el 1 de SEPTIEMBRE. La IA, si no se
+// le dice nada, lo lee a la americana (mes primero) y lo manda al 9 de ENERO. Pasó con
+// el recibo de la comunidad de septiembre: se archivó ocho meses atrás y el justificante
+// quedó colgando en un mes que no era.
+// Arreglo en dos capas, porque la IA no es de fiar para esto:
+//   1) Se le pide que copie la fecha TAL CUAL está impresa, sin interpretarla.
+//   2) Ese texto se traduce AQUÍ, con reglas fijas de día/mes/año. Lo que deduzca ella
+//      solo se usa si del papel no se saca nada.
+const MESES_ES={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12};
+// Arma la fecha solo si existe de verdad (el 31 de febrero no cuela)
+function _isoValido(a,m,d){
+  if(!(a>=2000&&a<=2099)||!(m>=1&&m<=12)||!(d>=1&&d<=31))return null;
+  const f=new Date(Date.UTC(a,m-1,d));
+  if(f.getUTCMonth()+1!==m||f.getUTCDate()!==d)return null;
+  return `${a}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+// Texto impreso → YYYY-MM-DD, con reglas ESPAÑOLAS. null si no hay fecha entera.
+function fechaDesdeTexto(txt){
+  const t=String(txt==null?'':txt).trim().toLowerCase();
+  if(!t||t==='null'||t==='yyyy-mm-dd')return null;
+  let m;
+  // Formato ordenador: 2026-09-01 (año delante = no hay ambigüedad posible)
+  if((m=/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(t)))return _isoValido(+m[1],+m[2],+m[3]);
+  // Día primero, SIEMPRE: 01/09/2026, 1-9-26, 01.09.2026
+  if((m=/(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/.exec(t))){
+    let a=+m[3];if(a<100)a+=2000;
+    return _isoValido(a,+m[2],+m[1]);
+  }
+  // Mes en letra: «1 de septiembre de 2026», «01-SEP-2026», «14 sept. 2026».
+  // Se busca primero el NOMBRE del mes y luego el día a su izquierda y el año a su
+  // derecha; así no importa cómo estén separados (guion, punto, «de»…).
+  const sinAcentos=t.normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const mMes=/\b(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[a-z]*/.exec(sinAcentos);
+  if(mMes){
+    const dia=/(\d{1,2})\s*(?:de\s+)?[-.\/\s]*$/.exec(sinAcentos.slice(0,mMes.index));
+    const anio=/^[-.\/\s]*(?:de\s+)?[-.\/\s]*(\d{2,4})/.exec(sinAcentos.slice(mMes.index+mMes[0].length));
+    if(dia&&anio){
+      let a=+anio[1];if(a<100)a+=2000;
+      return _isoValido(a,MESES_ES[mMes[1]],+dia[1]);
+    }
+  }
+  return null;
+}
+// La fecha buena de un ticket leído por la IA: manda lo impreso en el papel.
+function fechaDeTicket(p){
+  if(!p)return null;
+  return fechaDesdeTexto(p.fecha_texto)||fechaDesdeTexto(p.fecha)||null;
+}
 // Mes (1–12) de un gasto variable. Devuelve NaN si la fecha falta o no se entiende:
 // esos gastos no se esconden, se marcan con la chapa «sin fecha» para que no se pierdan.
 function gMes(g){const m=pdate(String((g&&g.fecha)||'').slice(0,10)).getMonth()+1;return isNaN(m)?NaN:m;}
@@ -930,10 +980,10 @@ async function ocrDocument(imageDataUrl){
   const base64=imageDataUrl.split(',')[1];
   const data=await anthropicRequest({
     model:'claude-haiku-4-5-20251001',
-    max_tokens:200,
+    max_tokens:300,
     messages:[{role:'user',content:[
       {type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
-      {type:'text',text:'Analiza este documento/ticket/factura. Responde SOLO JSON sin markdown:\n{"concepto":"nombre comercio o descripción","importe":0.00,"fecha":"YYYY-MM-DD","categoria":"suministros|mantenimiento|limpieza|tecnologia|fiscal|financiero|inmueble|otros","metodo":"tarjeta|metalico|transferencia|bizum"}\nUsa null si no puedes leer un campo.'}
+      {type:'text',text:'Analiza este documento/ticket/factura ESPAÑOL. Responde SOLO JSON sin markdown:\n{"concepto":"nombre comercio o descripción","importe":0.00,"fecha":"YYYY-MM-DD","fecha_texto":"la fecha copiada TAL CUAL está impresa","categoria":"suministros|lavanderia|limpieza|mantenimiento|tecnologia|fiscal|financiero|inmueble|otros","metodo":"tarjeta|metalico|transferencia|bizum"}\n\n⚠️ FECHAS — REGLA ESPAÑOLA, SIN EXCEPCIONES:\nEl documento es español: el formato es DÍA/MES/AÑO, nunca mes/día.\n01/09/2026 = 1 de SEPTIEMBRE de 2026. NO es el 9 de enero.\n07/03/2026 = 7 de MARZO. 12/01/2026 = 12 de ENERO.\nEn "fecha_texto" copia los caracteres exactos del papel (p.ej. "01/09/2026"), sin traducir ni reordenar nada.\nSi hay varias fechas, usa la de EMISIÓN del documento, no la del periodo facturado.\nEl documento puede estar girado o del revés: léelo igual.\n\nUsa null si no puedes leer un campo. NUNCA te inventes un importe ni una fecha.'}
     ]}]
   });
   let txt=(data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
@@ -980,7 +1030,9 @@ function fillGastoForm(parsed){
   let filled=[];
   if(parsed.concepto&&parsed.concepto!=='null'){document.getElementById('g-con').value=parsed.concepto;filled.push('concepto');}
   if(parsed.importe&&parsed.importe!==null){document.getElementById('g-imp').value=parsed.importe;filled.push('importe');}
-  if(parsed.fecha&&parsed.fecha!=='null'&&parsed.fecha!=='YYYY-MM-DD'){document.getElementById('g-fecha').value=parsed.fecha;filled.push('fecha');}
+  // La fecha sale de lo IMPRESO en el papel (día/mes/año), no de lo que deduzca la IA
+  const fISO=fechaDeTicket(parsed);
+  if(fISO){document.getElementById('g-fecha').value=fISO;filled.push('fecha');}
   const selCat=document.getElementById('g-cat');
   const cats=Array.from(selCat.options).map(o=>o.value);
   const cat=_matchOpcion(parsed.categoria,cats,CAT_SINONIMOS);
@@ -1056,7 +1108,7 @@ async function importFolder(inp){
         it.parsed={
           concepto:(p.concepto&&p.concepto!=='null')?p.concepto:'',
           importe:(p.importe&&p.importe!==null)?p.importe:'',
-          fecha:(p.fecha&&p.fecha!=='null'&&p.fecha!=='YYYY-MM-DD')?p.fecha:'',
+          fecha:fechaDeTicket(p)||'',
           categoria:_matchOpcion(p.categoria,CATS_GASTO,CAT_SINONIMOS)||'otros',
           metodo:_matchOpcion(p.metodo,METODOS_GASTO,MET_SINONIMOS)||'bizum'
         };
@@ -1395,7 +1447,7 @@ async function fileToReservasPayload(file){
 
 // IA (Haiku): devuelve un array de reservas normalizadas desde el contenido del archivo
 async function aiExtractReservas(payload){
-  const instr='Extrae TODAS las reservas de este documento (Booking, Airbnb o reservas directas). Responde SOLO un JSON array, sin markdown. Cada elemento:\n{"guest":"nombre huésped","ci":"YYYY-MM-DD","co":"YYYY-MM-DD","fc":"YYYY-MM-DD o null","canal":"booking|airbnb|directo","bruto":0.00,"com":0.00,"neto":0.00}\nci=entrada/check-in, co=salida/check-out. fc=fecha de COBRO: solo si el documento indica cuándo se pagó (p.ej. "Fecha de emisión del pago" en los resúmenes de pago de Booking); si el documento es un listado de reservas sin fechas de pago, fc=null. bruto=importe total antes de comisión. com=comisión (número positivo). neto=lo que recibe el hostal. Usa null si un dato no aparece. Deduce el canal según el origen del documento. Si no hay reservas, responde [].';
+  const instr='Extrae TODAS las reservas de este documento (Booking, Airbnb o reservas directas). Responde SOLO un JSON array, sin markdown. Cada elemento:\n{"guest":"nombre huésped","ci":"YYYY-MM-DD","co":"YYYY-MM-DD","fc":"YYYY-MM-DD o null","canal":"booking|airbnb|directo","bruto":0.00,"com":0.00,"neto":0.00}\nci=entrada/check-in, co=salida/check-out. fc=fecha de COBRO: solo si el documento indica cuándo se pagó (p.ej. "Fecha de emisión del pago" en los resúmenes de pago de Booking); si el documento es un listado de reservas sin fechas de pago, fc=null. bruto=importe total antes de comisión. com=comisión (número positivo). neto=lo que recibe el hostal. Usa null si un dato no aparece. Deduce el canal según el origen del documento. Si no hay reservas, responde [].\n\n⚠️ FECHAS — REGLA ESPAÑOLA, SIN EXCEPCIONES: el documento es español y el formato es DÍA/MES/AÑO, nunca mes/día. 01/09/2026 = 1 de SEPTIEMBRE de 2026, NO el 9 de enero. Conviértelas tú a YYYY-MM-DD aplicando esa regla.';
   const content = payload.kind==='image'
     ? [{type:'image',source:{type:'base64',media_type:'image/jpeg',data:payload.dataUrl.split(',')[1]}},{type:'text',text:instr}]
     : [{type:'text',text:'Contenido del archivo:\n'+String(payload.text||'').slice(0,14000)},{type:'text',text:instr}];
