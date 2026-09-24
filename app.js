@@ -975,8 +975,65 @@ async function anthropicRequest(payload){
   if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error('API '+r.status+': '+(e.error?.message||'')); }
   return r.json();
 }
-// OCR — una sola lectura Haiku sobre la imagen; devuelve el objeto parsed o lanza error
+// ═══════════ EL LECTOR NO PUEDE INVENTARSE NADA ═══════════
+// ⚠️ 24 sep 2026. Con la foto DERECHA el lector acierta siempre: cuatro lecturas del
+// recibo de la comunidad dieron las cuatro 17,98 € y 01/09/2026.
+// Con la MISMA foto del revés se lo inventaba entero, y distinto cada vez:
+//   «Cenicero Posada Lamet 14,88 € 02/06/10» · «Limpieza Posada Lamet 14,88 € 07/03/2026»
+//   · «COLLISION CORNELLÁ, sin importe, 10/02/2026». De lado se sacó 49,15 €.
+// Un importe inventado que entra en las cuentas es peor que no leer nada: nadie lo
+// revisa porque parece bueno. Y la regla de esta casa es que sin documento NO se apunta.
+//
+// Preguntar «¿está girada?» no vale: a la foto derecha contestó «gírala 270».
+// Lo que sí distingue una lectura buena de una inventada es que la buena SE REPITE.
+// Así que cada foto se lee DOS veces y solo se acepta si las dos dicen el mismo importe
+// y la misma fecha. Si no coinciden, se prueba del revés y de lado. Y si aun así no hay
+// dos lecturas iguales, no se rellena NADA y se avisa de que hay que mirarlo a mano.
+const GIROS_A_PROBAR=[0,180,90,270];
+// Gira la foto aquí mismo, sin mandarla a ningún sitio
+function girarFoto(dataUrl,grados){
+  return new Promise((ok,fail)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');
+      const deLado=(grados===90||grados===270);
+      c.width=deLado?img.height:img.width;
+      c.height=deLado?img.width:img.height;
+      const x=c.getContext('2d');
+      x.translate(c.width/2,c.height/2);
+      x.rotate(grados*Math.PI/180);
+      x.drawImage(img,-img.width/2,-img.height/2);
+      ok(c.toDataURL('image/jpeg',0.85));
+    };
+    img.onerror=()=>fail(new Error('no se pudo girar la foto'));
+    img.src=dataUrl;
+  });
+}
+// ¿Dicen lo mismo las dos lecturas en lo que de verdad importa? (importe y fecha)
+function _lecturasCoinciden(a,b){
+  if(!a||!b)return false;
+  const cent=x=>{const n=Number(x&&x.importe);return isFinite(n)&&n>0?Math.round(n*100):null;};
+  const f=fechaDeTicket(a);
+  return cent(a)!==null&&cent(a)===cent(b)&&f!==null&&f===fechaDeTicket(b);
+}
+// Lee la foto: dos veces por cada giro, hasta que dos lecturas coincidan.
+// Devuelve además `_foto` (la foto ya derecha, si hubo que girarla) y `_inseguro`.
 async function ocrDocument(imageDataUrl){
+  let ultima=null;
+  for(const giro of GIROS_A_PROBAR){
+    let img=imageDataUrl;
+    if(giro){
+      try{img=await girarFoto(imageDataUrl,giro);}catch(e){continue;}
+    }
+    const [a,b]=await Promise.all([leerDocumentoUnaVez(img),leerDocumentoUnaVez(img)]);
+    if(_lecturasCoinciden(a,b))return{...a,_giro:giro,_foto:giro?img:null};
+    ultima=ultima||a;
+  }
+  return{...(ultima||{}),_inseguro:true};
+}
+// Una lectura suelta. No se usa directamente: siempre va por `ocrDocument`, que exige
+// que dos lecturas coincidan antes de dar nada por bueno.
+async function leerDocumentoUnaVez(imageDataUrl){
   const base64=imageDataUrl.split(',')[1];
   const data=await anthropicRequest({
     model:'claude-haiku-4-5-20251001',
@@ -1028,6 +1085,9 @@ function _matchOpcion(valor,opcionesValidas,sinonimos){
 // Rellena el formulario de gasto con lo extraído; devuelve la lista de campos rellenados
 function fillGastoForm(parsed){
   let filled=[];
+  // Dos lecturas de la misma foto no dijeron lo mismo: no hay dato fiable que poner.
+  // Antes de inventarse un importe, mejor dejarlo en blanco y que lo mire ella.
+  if(parsed&&parsed._inseguro)return filled;
   if(parsed.concepto&&parsed.concepto!=='null'){document.getElementById('g-con').value=parsed.concepto;filled.push('concepto');}
   if(parsed.importe&&parsed.importe!==null){document.getElementById('g-imp').value=parsed.importe;filled.push('importe');}
   // La fecha sale de lo IMPRESO en el papel (día/mes/año), no de lo que deduzca la IA
@@ -1065,13 +1125,22 @@ function previewFoto(inp){
       if(prev){prev.src=compressed;prev.style.display='block';}
       _fotoData=compressed;
       const parsed=await ocrDocument(compressed);
+      // Si hubo que girar la foto para poder leerla, se guarda ya derecha: así la ve
+      // bien la gestora y la próxima vez se lee a la primera.
+      if(parsed&&parsed._foto){_fotoData=parsed._foto;if(prev)prev.src=parsed._foto;}
       if(spin)spin.style.display='none';
       const filled=fillGastoForm(parsed);
       if(res){
         res.style.display='block';
-        res.textContent=filled.length?'✓ Extraído: '+filled.join(', ')+' · Revisa antes de guardar':'Documento leído pero sin datos reconocibles';
-        res.style.background=filled.length?'var(--green-bg)':'var(--surf3)';
-        res.style.color=filled.length?'var(--green)':'var(--text3)';
+        if(parsed&&parsed._inseguro){
+          res.textContent='⚠️ Esta foto no se lee con seguridad: al leerla dos veces salían datos distintos. La foto se guarda igual, pero el importe y la fecha ponlos tú.';
+          res.style.background='var(--surf3)';res.style.color='var(--gold)';
+        } else {
+          res.textContent=(filled.length?'✓ Extraído: '+filled.join(', '):'Documento leído pero sin datos reconocibles')
+            +(parsed&&parsed._giro?' · foto enderezada':'')+(filled.length?' · Revisa antes de guardar':'');
+          res.style.background=filled.length?'var(--green-bg)':'var(--surf3)';
+          res.style.color=filled.length?'var(--green)':'var(--text3)';
+        }
       }
     }catch(err){
       if(spin)spin.style.display='none';
@@ -1105,14 +1174,23 @@ async function importFolder(inp){
       try{
         it.foto=await fileToJustificante(it.file);
         const p=await ocrDocument(it.foto);
-        it.parsed={
-          concepto:(p.concepto&&p.concepto!=='null')?p.concepto:'',
-          importe:(p.importe&&p.importe!==null)?p.importe:'',
-          fecha:fechaDeTicket(p)||'',
-          categoria:_matchOpcion(p.categoria,CATS_GASTO,CAT_SINONIMOS)||'otros',
-          metodo:_matchOpcion(p.metodo,METODOS_GASTO,MET_SINONIMOS)||'bizum'
-        };
-        it.estado='ok';
+        if(p&&p._foto)it.foto=p._foto;          // se guarda ya enderezada
+        if(p&&p._inseguro){
+          // Dos lecturas distintas de la misma foto: no se rellena nada inventado.
+          // El ticket entra igual, en blanco y marcado, para que ella lo complete.
+          it.parsed={concepto:'',importe:'',fecha:'',categoria:'otros',metodo:'bizum'};
+          it.estado='revisar';
+          it.error='No se lee con seguridad · ponle tú el importe y la fecha';
+        } else {
+          it.parsed={
+            concepto:(p.concepto&&p.concepto!=='null')?p.concepto:'',
+            importe:(p.importe&&p.importe!==null)?p.importe:'',
+            fecha:fechaDeTicket(p)||'',
+            categoria:_matchOpcion(p.categoria,CATS_GASTO,CAT_SINONIMOS)||'otros',
+            metodo:_matchOpcion(p.metodo,METODOS_GASTO,MET_SINONIMOS)||'bizum'
+          };
+          it.estado='ok';
+        }
       }catch(e){
         it.estado='error';it.error=e.message;
       }
@@ -1143,6 +1221,7 @@ function renderBatchTable(){
     const incompleto=!it.parsed.importe||!it.parsed.fecha||!it.parsed.concepto;
     let aviso='';
     if(it.estado==='error')aviso=`<div style="font-size:10px;color:var(--red);margin-top:4px">⚠ No se pudo leer (${esc(it.error)}) · rellena a mano</div>`;
+    else if(it.estado==='revisar')aviso=`<div style="font-size:10px;color:var(--gold);margin-top:4px">⚠ ${esc(it.error)}</div>`;
     else if(incompleto)aviso=`<div style="font-size:10px;color:var(--gold);margin-top:4px">⚠ Faltan datos · revísalos</div>`;
     h+=`<div style="display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border2)">
       <div style="flex:0 0 54px">${it.foto?`<img src="${it.foto}" style="width:54px;height:54px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="showBatchFoto(${i})">`:'<div style="width:54px;height:54px;display:flex;align-items:center;justify-content:center;background:var(--surf3);border-radius:6px">📄</div>'}</div>
