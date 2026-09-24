@@ -550,6 +550,7 @@ function renderDashboard(){
   const pd=PERIOD_DEFS[curP];
   const mes=pd.mes, mL=pd.label;
   document.getElementById('exc-title').textContent='Vista global · '+mL;
+  renderSinImporteBox('dash-sinimporte');
   renderPendBox('dash-pendientes');
   const ing=ingTotal(mes,'bruto'),com=Math.abs(comTotal(mes)),nto=ingTotal(mes,'neto'),gast=gTot(mes),res=nto-gast,ocu=occPct(mes);
   document.getElementById('kpis').innerHTML=`
@@ -1876,9 +1877,38 @@ function renderInforme(){
   h+=`<tr class="tot"><td>TOTAL GASTOS</td>${Q1m.map(m=>`<td class="neg">${fn0(gTot([m]))}</td>`).join('')}<td class="neg">${fn0(gT)}</td></tr>`;
   h+=`<tr class="tot" style="background:rgba(200,168,74,.07)"><td style="font-family:'Playfair Display',serif;font-size:13px;color:var(--gold)">RESULTADO NETO</td>${Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return`<td class="${n>=0?'pos':'neg'}">${fn0(n)}</td>`;}).join('')}<td class="${res>=0?'gold':'neg'}" style="font-size:13px">${fn0(res)}</td></tr>`;
   h+=`</tbody>`;document.getElementById('inf-tbl').innerHTML=h;
+  renderSinImporteBox('inf-sinimporte');
   renderPendBox('inf-pendientes');
   renderProrrBox('inf-prorrateos',Q1m);
 }
+
+// ═══════════ RESERVAS YA PASADAS QUE NO TIENEN IMPORTE ═══════════
+// ⚠️ 24 sep 2026. Una reserva a 0 € no se ve: no suma, no descuadra nada a la vista y
+// no sale en ninguna lista. Simplemente falta dinero y nadie se entera.
+// Aparecieron seis así, y dos tenían su cobro en el extracto de Booking: Seppe Deraedt
+// 118 € y Norma Savalvarro 110 €. 228 € de ingresos que no estaban apuntados.
+// Viene de fuera: el programa de reservas tampoco tiene el precio de esas. Por eso el
+// aviso es aquí — es el único sitio donde alguien lo va a mirar.
+// Solo se avisa de las YA TERMINADAS: una reserva futura sin precio es normal.
+function reservasSinImporte(){
+  const hoy=hoyISO();
+  return visibleReservas()
+    .filter(r=>r.co&&r.co<hoy&&!(Number(r.bruto)>0))
+    .sort((a,b)=>String(a.ci).localeCompare(String(b.ci)));
+}
+function renderSinImporteBox(elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const sin=reservasSinImporte();
+  if(!sin.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="margin:0 0 12px;padding:10px 14px;background:rgba(200,74,74,.08);border:1px solid var(--red);border-radius:8px;font-size:12px">
+    <b style="color:var(--red)">⚠️ ${sin.length} reserva${sin.length>1?'s ya terminadas':' ya terminada'} sin importe</b>
+    <span style="font-size:11px;color:var(--text3)">— puede faltar dinero por apuntar</span>
+    <div style="margin-top:5px;font-size:11px;color:var(--text3)">${sin.map(r=>`${esc4(r.guest)||'(sin nombre)'} (${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'} · ${fdate(r.ci)}→${r.co?fdate(r.co):'?'}${r.room?' · hab '+esc4(r.room):''})`).join(' · ')}</div>
+    <div style="margin-top:4px;font-size:10px;color:var(--text3)">Míralo en el extracto del portal y ponle el importe a mano. Si de verdad no se cobró (anulada o no se presentó), bórrala para que deje de avisar.</div>
+  </div>`;
+}
+function esc4(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 // Caja "⏳ sin cobrar" (dashboard e informe): recordatorio de reservas sin fecha de cobro
 // desde jul-2026. Informativo — el ingreso SÍ está incluido, por mes de estancia.

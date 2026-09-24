@@ -94,6 +94,7 @@
     <button class="ing-btn" onclick="openIngModal()">+ Añadir ingreso</button>
   </div>
   <div class="kpis" id="kpis"></div>
+  <div id="dash-sinimporte"></div>
   <div id="dash-pendientes"></div>
   <div class="balance-row" id="bal-cards"></div>
   <div class="card">
@@ -235,6 +236,7 @@
       <button class="exp-btn" onclick="document.getElementById('backup-file').click()" title="Restaurar los datos desde una copia descargada">↩ Restaurar</button>
       <input type="file" id="backup-file" accept=".json,application/json" style="display:none" onchange="backupImport(this)">
     </div>
+    <div id="inf-sinimporte"></div>
     <div id="inf-pendientes"></div>
     <div class="tscroll"><table class="inf-tbl" id="inf-tbl"></table></div>
     <div id="inf-prorrateos"></div>
