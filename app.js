@@ -1237,10 +1237,12 @@ async function saveGasto(){
     if(!gf){alert('Gasto fijo no encontrado');return;}
     const mes=pdate(fecha).getMonth()+1;
     gf.m[mes]=importe;
+    marcarMesTocado(gf,mes,'importe');
     if(_fotoData){
       const ref=await subirFoto(_fotoData,gf.id+'-m'+mes);
       if(ref){gf.fotoRefM=gf.fotoRefM||{};gf.fotoRefM[mes]=ref;if(gf.fotoM)delete gf.fotoM[mes];}
       else{gf.fotoM=gf.fotoM||{};gf.fotoM[mes]=_fotoData;}
+      marcarMesTocado(gf,mes,'foto');
     }
     saveGastosFijos();
     closeModals();
@@ -1956,7 +1958,14 @@ function saveFijo(){
   }
   if(_editFijoId){
     const idx=GASTOS_FIJOS.findIndex(x=>x.id===_editFijoId);
-    if(idx>-1) GASTOS_FIJOS[idx]={...GASTOS_FIJOS[idx],n:nombre,cat,m:meses};
+    if(idx>-1){
+      const nuevo={...GASTOS_FIJOS[idx],n:nombre,cat,m:meses};
+      // Solo se marcan los meses cuyo importe CAMBIA de verdad: así, abrir la ficha y
+      // guardar sin tocar nada no pisa lo que se esté apuntando en el otro aparato.
+      const antes=GASTOS_FIJOS[idx].m||{};
+      for(let mm=1;mm<=12;mm++)if((antes[mm]||0)!==(meses[mm]||0))marcarMesTocado(nuevo,mm,'importe');
+      GASTOS_FIJOS[idx]=nuevo;
+    }
   } else {
     GASTOS_FIJOS.push({id:'gf'+Date.now(),n:nombre,cat,m:meses,sys:false});
   }
@@ -2410,7 +2419,6 @@ async function migrarFotos(){
 }
 // Lo que viaja a la nube va SIN imágenes dentro
 function sinFotos(arr){return (arr||[]).map(g=>{if(!g||!g.foto)return g;const c={...g};delete c.foto;return c;});}
-function sinFotosFijos(arr){return (arr||[]).map(g=>{if(!g||!g.fotoM)return g;const c={...g};delete c.fotoM;return c;});}
 
 // ── Vaciar fotos de trimestres ya enviados a la gestora ───────────────────
 // Cuando el ZIP de justificantes ya está en manos de Ester, esas fotos no hacen falta
@@ -2439,6 +2447,8 @@ async function vaciarFotosAntiguas(){
     if(g.fotoM)delete g.fotoM[mm];
     if(g.fotoRefM)delete g.fotoRefM[mm];
     if(g.fotoUrlM)delete g.fotoUrlM[mm];
+    // Se apunta la hora del borrado: si no, al juntar con la nube la foto volvería sola
+    marcarMesTocado(g,mm,'foto');
   }
   guardarLocal('gv5',GASTOS_VAR);
   guardarLocal('gf6',GASTOS_FIJOS);
@@ -2656,8 +2666,78 @@ function _juntarParaSubir(k,cloudArr,localArr){
   const fuera=new Set(sj('del_'+k,[]));
   const porId=new Map();
   cloud.forEach(x=>{if(x&&x.id&&!fuera.has(x.id))porId.set(x.id,x);});
-  locales.forEach(x=>{if(x&&x.id&&!fuera.has(x.id))porId.set(x.id,x);});
+  // Un gasto VARIABLE es un apunte suelto: manda entero el de este aparato.
+  // Un gasto FIJO no: son doce casillas con sus doce justificantes, y hay que juntarlas
+  // una a una (ver `fundirFijoParaSubir`).
+  locales.forEach(x=>{
+    if(!x||!x.id||fuera.has(x.id))return;
+    porId.set(x.id, k==='gf6' ? fundirFijoParaSubir(porId.get(x.id),x) : x);
+  });
   return [...porId.values()];
+}
+
+// ═══════════ UN GASTO FIJO SE JUNTA MES A MES ═══════════
+// ⚠️ 24 sep 2026 — POR QUÉ ESTO NO PUEDE VOLVER A SER «manda el aparato».
+// Un gasto fijo no es un apunte suelto: son doce casillas (una por mes) con sus doce
+// justificantes. Al subir se mandaba el gasto ENTERO, así que el aparato que escribía
+// el último borraba los meses que había rellenado el otro.
+// Pasó con el recibo de la comunidad de septiembre: el móvil lo subió a las 9:05 y otro
+// aparato lo barrió a las 9:13. La foto se quedó en la nube sin nada que la señalara —
+// un justificante invisible, que para la gestoría es lo mismo que no tenerlo.
+// Ahora se junta casilla por casilla. La marca de tiempo (`mT`, `fotoT`) dice cuándo se
+// tocó cada mes, así que gana el último que lo tocó de verdad, no el último que habló.
+// Sin marca (datos de antes de hoy) nunca se tira nada: se conservan los dos lados.
+const MAPAS_FOTO=['fotoM','fotoRefM','fotoUrlM'];
+const MAPAS_NUBE=['fotoRefM','fotoUrlM'];   // `fotoM` (foto pegada dentro) no viaja nunca
+// La señal de la foto de un mes, esté en el mapa que esté
+function _refDeMes(g,m){
+  for(const k of MAPAS_NUBE){if(g&&g[k]&&g[k][m])return{k,v:g[k][m]};}
+  return null;
+}
+// Quita la imagen pegada dentro del dato: pesa demasiado para el documento de la nube
+function _sinFotoPegada(g){if(!g||!g.fotoM)return g;const c={...g};delete c.fotoM;return c;}
+function fundirFijoParaSubir(nube,local){
+  if(!nube)return _sinFotoPegada(local);
+  if(!local)return nube;
+  const out={...nube,...local};
+  // ── Importes: mes a mes, gana quien lo tocó más tarde ──
+  const m={...(nube.m||{}),...(local.m||{})};
+  const mT={...(nube.mT||{}),...(local.mT||{})};
+  for(let i=1;i<=12;i++){
+    const tN=(nube.mT||{})[i]||0,tL=(local.mT||{})[i]||0;
+    if(tN>tL&&(nube.m||{})[i]!==undefined){m[i]=nube.m[i];mT[i]=tN;}
+  }
+  out.m=m;
+  if(Object.keys(mT).length)out.mT=mT;
+  // ── Justificantes: mes a mes, y una foto solo se va si se quitó a propósito ──
+  const fotoT={...(nube.fotoT||{}),...(local.fotoT||{})};
+  MAPAS_NUBE.forEach(k=>{out[k]={...(nube[k]||{})};});
+  // Una imagen pegada dentro del dato NUNCA viaja (abulta demasiado y el documento de la
+  // nube tiene tope). Las que ya estuvieran arriba de antes se respetan: borrarlas sería
+  // tirar un justificante que a lo mejor no está en ningún otro sitio.
+  out.fotoM={...(nube.fotoM||{})};
+  for(let i=1;i<=12;i++){
+    const tN=(nube.fotoT||{})[i]||0,tL=(local.fotoT||{})[i]||0;
+    const mia=_refDeMes(local,i);
+    if(mia){                                     // aquí hay foto: la de aquí manda
+      MAPAS_NUBE.forEach(k=>{delete out[k][i];});
+      out[mia.k][i]=mia.v;
+      delete out.fotoM[i];                       // ya está mudada al almacén
+    } else if(tL>tN&&!tieneFotoFijo(local,i)){   // se quitó aquí, y después que en la nube
+      MAPAS_NUBE.forEach(k=>{delete out[k][i];});
+      delete out.fotoM[i];
+    }                                            // si no, se respeta lo que traiga la nube
+    const t=Math.max(tN,tL);if(t)fotoT[i]=t;
+  }
+  if(Object.keys(fotoT).length)out.fotoT=fotoT;
+  MAPAS_FOTO.forEach(k=>{if(out[k]&&!Object.keys(out[k]).length)delete out[k];});
+  return out;
+}
+// Deja constancia de CUÁNDO se tocó un mes, para que al juntar gane el último de verdad
+function marcarMesTocado(g,mes,que){
+  if(!g||!mes)return;
+  const k=que==='foto'?'fotoT':'mT';
+  g[k]=g[k]||{};g[k][mes]=Date.now();
 }
 
 // ⚠️ 9 sep 2026 — POR QUÉ ESTO NO PUEDE VOLVER A SER UN setDoc A SECAS:
@@ -2688,7 +2768,10 @@ async function syncToFirebase(){
         const snap=await getDoc(ref); if(snap.exists())nube=snap.data()||{};
       } else throw e0;
     }
-    const fijosJuntos=_juntarParaSubir('gf6',nube.gf6,sinFotosFijos(GASTOS_FIJOS));
+    // Los fijos van ENTEROS a juntarse: `fundirFijoParaSubir` ya se encarga de que la
+    // imagen pegada no viaje, y necesita ver las fotos de aquí para no dar por borrado
+    // un mes que en realidad sí tiene justificante.
+    const fijosJuntos=_juntarParaSubir('gf6',nube.gf6,GASTOS_FIJOS);
     const paquete={
       ing_extra:_juntarParaSubir('ing_extra',nube.ing_extra,sinFotos(RESERVAS_EXTRA)),
       gv5:_juntarParaSubir('gv5',nube.gv5,sinFotos(GASTOS_VAR)),
