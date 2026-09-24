@@ -2085,6 +2085,27 @@ function saveFijo(){
   _editFijoId=null;
 }
 
+// ── ¿Se le ha mandado ya el trimestre a Ester? ───────────────────────────
+// Glenda genera DOS documentos para cada envío: el informe en PDF y el ZIP de
+// justificantes. Con uno solo no vale (puede estar mirándolo). Cuando están los
+// dos, el trimestre se da por entregado y se apunta la fecha: el programa del Mac
+// que prepara los envíos la lee y, a partir de ahí, lo que llegue tarde de ese
+// trimestre lo manda al trimestre siguiente en vez de colarlo en un envío ya hecho.
+let ENTREGAS=sj('entregas_ester',{})||{};
+function _hoyISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function apuntarEntregaEster(tipo){
+  const slug=periodoInf().slug;
+  if(!/^q[1-4]$/.test(slug))return;            // solo trimestres enteros
+  const tri=slug.replace('q','T').toUpperCase();
+  const e=ENTREGAS[tri]={...(ENTREGAS[tri]||{})};
+  e[tipo]=_hoyISO();
+  if(e.pdf&&e.zip&&!e.enviado){
+    e.enviado=e.pdf>e.zip?e.pdf:e.zip;
+    setTimeout(()=>notif(`📮 ${tri} dado por enviado a Ester. Lo que llegue después irá al trimestre siguiente.`),1200);
+  }
+  guardarLocal('entregas_ester',ENTREGAS);
+}
+
 async function exportPDF(){
   notif('Generando PDF...');
   try{
@@ -2288,6 +2309,7 @@ async function exportPDF(){
     }
 
     doc.save('hostal_matildas_informe_'+pd.slug+'_2026.pdf');
+    apuntarEntregaEster('pdf');
     notif('PDF generado ✓');
   }catch(e){
     console.error('PDF error:',e);
@@ -2367,6 +2389,7 @@ async function exportJustificantes(){
     a.download=`justificantes_${tri}_2026.zip`;
     a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    apuntarEntregaEster('zip');
     notif(items.length+' justificantes descargados ✓');
   }catch(e){
     // Sin ZIP (p. ej. sin conexión): se bajan de una en una
@@ -2782,6 +2805,7 @@ async function initFirebase(){
         if(d.ing_extra){RESERVAS_EXTRA=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);}
         if(d.gv5){GASTOS_VAR=juntarPorId('gv5',d.gv5,GASTOS_VAR);guardarLocal('gv5',GASTOS_VAR);}
         if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);}
+        if(d.entregas_ester){ENTREGAS=_juntarEntregas(d.entregas_ester,ENTREGAS);guardarLocal('entregas_ester',ENTREGAS);}
       }finally{soltarCandado();}
       cleanupInventedData();
     }
@@ -2807,6 +2831,7 @@ async function initFirebase(){
           if(d.ing_extra){const nx=juntarPorId('ing_extra',d.ing_extra,RESERVAS_EXTRA);if(JSON.stringify(nx)!==JSON.stringify(RESERVAS_EXTRA)){RESERVAS_EXTRA=nx;RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];guardarLocal('ing_extra',RESERVAS_EXTRA);changed=true;}}
           if(d.gv5){const nx=juntarPorId('gv5',d.gv5,GASTOS_VAR);if(JSON.stringify(nx)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=nx;guardarLocal('gv5',GASTOS_VAR);changed=true;}}
           if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);if(JSON.stringify(nf)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);changed=true;}}
+          if(d.entregas_ester){const ne=_juntarEntregas(d.entregas_ester,ENTREGAS);if(JSON.stringify(ne)!==JSON.stringify(ENTREGAS)){ENTREGAS=ne;guardarLocal('entregas_ester',ENTREGAS);}}
         }finally{soltarCandado();}
         cleanupInventedData();
         if(changed){
@@ -2957,6 +2982,7 @@ async function syncToFirebase(){
       gv5:_juntarParaSubir('gv5',nube.gv5,sinFotos(GASTOS_VAR)),
       gf6:fijosJuntos,
       gf_deleted:[...new Set([...(nube.gf_deleted||[]),...sj('gf_deleted',[])])],
+      entregas_ester:_juntarEntregas(nube.entregas_ester,ENTREGAS),
       del_gv5:[...new Set([...(nube.del_gv5||[]),...sj('del_gv5',[])])],
       del_ing_extra:[...new Set([...(nube.del_ing_extra||[]),...sj('del_ing_extra',[])])],
       del_gf6:[...new Set([...(nube.del_gf6||[]),...sj('del_gf6',[])])],
@@ -2986,6 +3012,17 @@ async function syncToFirebase(){
     if(_subirOtraVez){_subirOtraVez=false;setTimeout(syncToFirebase,300);}
   }
 }
+// Las entregas se juntan trimestre a trimestre, quedándose con la fecha más tardía:
+// así da igual desde qué aparato se genere el informe.
+function _juntarEntregas(nube,local){
+  const out={...(nube||{})};
+  Object.keys(local||{}).forEach(t=>{
+    const a=out[t]||{}, b=local[t]||{}, j={...a};
+    ['pdf','zip','enviado'].forEach(k=>{ if(b[k]&&(!a[k]||b[k]>a[k]))j[k]=b[k]; });
+    out[t]=j;
+  });
+  return out;
+}
 function _quitarDePendientes(k,subidos){
   const viajaron=new Set((subidos||[]).map(x=>x&&x.id));
   const quedan=sj('pend_'+k,[]).filter(id=>!viajaron.has(id));
@@ -2997,7 +3034,7 @@ function _quitarDePendientes(k,subidos){
   const orig=localStorage.setItem.bind(localStorage);
   localStorage.setItem=function(k,v){
     orig(k,v);
-    if(!_syncing&&['ing_extra','gv5','gf6','gf_deleted'].includes(k)){
+    if(!_syncing&&['ing_extra','gv5','gf6','gf_deleted','entregas_ester'].includes(k)){
       // Se apunta lo que hay ahora como "pendiente de subir". Si la subida va bien se
       // borra la nota; si falla, la próxima bajada de la nube respeta estos datos en
       // vez de machacarlos (era como se perdían los tickets metidos desde el móvil).
