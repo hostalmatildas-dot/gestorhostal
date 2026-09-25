@@ -2093,9 +2093,14 @@ function saveFijo(){
 // trimestre lo manda al trimestre siguiente en vez de colarlo en un envío ya hecho.
 let ENTREGAS=sj('entregas_ester',{})||{};
 function _hoyISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+// Un trimestre solo puede estar enviado a partir del día 1 del mes siguiente a su
+// último mes: el T3 (jul-ago-sep) no se manda hasta octubre. Si Glenda genera los
+// documentos antes, es que está mirando cómo va el trimestre, no que lo haya enviado.
+function _mesDeEnvio(nq){return {1:'2026-04-01',2:'2026-07-01',3:'2026-10-01',4:'2027-01-01'}[nq];}
 function apuntarEntregaEster(tipo){
   const slug=periodoInf().slug;
   if(!/^q[1-4]$/.test(slug))return;            // solo trimestres enteros
+  if(_hoyISO()<_mesDeEnvio(+slug[1]))return;   // el trimestre aún no ha terminado
   const tri=slug.replace('q','T').toUpperCase();
   const e=ENTREGAS[tri]={...(ENTREGAS[tri]||{})};
   e[tipo]=_hoyISO();
