@@ -443,8 +443,30 @@ function contarNuevasPMS(){
 // cambiar en sus cuentas.
 const PMS_AUTO_MAX=10;
 
+// ⚠️ 25 sep 2026 — «NO SE SABE EL PRECIO» NO ES «CERO EUROS».
+// El calendario que manda Booking no lleva importe: una reserva nace sin precio y lo
+// recibe después. El PMS lo decía con un 0, igual que una reserva que de verdad vale 0
+// (una devolución, la hermana de un grupo que paga una sola, un eco del calendario).
+// Al no distinguirse, a una devolución se le apuntaron 110 € de ingreso que no existían.
+// Ahora el PMS manda `sin_precio` y aquí se guarda: el aviso rojo solo da la lata con
+// las que de verdad les falta el dato, y calla con las que ya están confirmadas a 0 €.
+function _refrescarSinPrecio(){
+  const porId=new Map();
+  RESERVAS_PMS.forEach(p=>porId.set('pms-'+(p.pms_id||p.id),p));
+  let n=0;
+  RESERVAS_EXTRA.forEach(r=>{
+    const p=porId.get(r.id);
+    if(!p||p.sin_precio===undefined)return;              // PMS viejo: no se toca nada
+    const v=!!p.sin_precio;
+    if(r.sinPrecio!==v){r.sinPrecio=v;n++;}
+  });
+  if(n)guardarLocal('ing_extra',RESERVAS_EXTRA);
+  return n;
+}
+
 function importarDesdePMS(auto=false){
   if(!RESERVAS_PMS.length){if(!auto)notif('Primero pulsa «Sync PMS»',true);return;}
+  _refrescarSinPrecio();
   let nuevas=0,gastos=0,yaEstaban=0,sinComision=0,fueraDePlazo=0;
   RESERVAS_PMS.forEach(p=>{
     if(!p.ci||p.ci<IMPORTAR_PMS_DESDE){fueraDePlazo++;return;}
@@ -459,6 +481,8 @@ function importarDesdePMS(auto=false){
       id:idRes,room:p.room,guest:p.guest,ci:p.ci,co:p.co,
       fc:p.cobrado_el||undefined,canal:p.canal,
       bruto:p.bruto,com:p.com||0,neto:(p.neto!=null?p.neto:p.bruto),
+      // true = al PMS aún no le ha llegado el precio (no es una reserva de 0 €)
+      sinPrecio:p.sin_precio===undefined?undefined:!!p.sin_precio,
       // El PMS dice como se cobro de verdad. Si no lo dijera (version vieja), se
       // mantiene lo de siempre en vez de inventarselo.
       metodo:p.metodo||(p.canal==='directo'?'Bizum/Transf':'OTA'),
@@ -1890,10 +1914,16 @@ function renderInforme(){
 // Viene de fuera: el programa de reservas tampoco tiene el precio de esas. Por eso el
 // aviso es aquí — es el único sitio donde alguien lo va a mirar.
 // Solo se avisa de las YA TERMINADAS: una reserva futura sin precio es normal.
+// ⚠️ 25 sep 2026 — solo se avisa de las que de VERDAD les falta el precio.
+// Una reserva a 0 € puede ser tres cosas: que no se sepa el precio todavía, que valga
+// 0 € de verdad (devolución, hermana de un grupo, eco del calendario), o que el dinero
+// esté en otra ficha. El PMS ahora lo dice con `sin_precio`; si dice que NO falta, se
+// calla, porque dar la lata con algo que ya está bien enseña a no mirar el aviso.
+// Sin ese dato (apuntes a mano o PMS viejo) se avisa igual: más vale preguntar de más.
 function reservasSinImporte(){
   const hoy=hoyISO();
   return visibleReservas()
-    .filter(r=>r.co&&r.co<hoy&&!(Number(r.bruto)>0))
+    .filter(r=>r.co&&r.co<hoy&&!(Number(r.bruto)>0)&&r.sinPrecio!==false)
     .sort((a,b)=>String(a.ci).localeCompare(String(b.ci)));
 }
 function renderSinImporteBox(elId){
