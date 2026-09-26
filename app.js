@@ -1902,6 +1902,7 @@ function renderInforme(){
   h+=`<tr class="tot" style="background:rgba(200,168,74,.07)"><td style="font-family:'Playfair Display',serif;font-size:13px;color:var(--gold)">RESULTADO NETO</td>${Q1m.map(m=>{const n=ingTotal([m],'neto')-gTot([m]);return`<td class="${n>=0?'pos':'neg'}">${fn0(n)}</td>`;}).join('')}<td class="${res>=0?'gold':'neg'}" style="font-size:13px">${fn0(res)}</td></tr>`;
   h+=`</tbody>`;document.getElementById('inf-tbl').innerHTML=h;
   renderSinImporteBox('inf-sinimporte');
+  renderSinComisionBox('inf-sincomision',Q1m);
   renderPendBox('inf-pendientes');
   renderProrrBox('inf-prorrateos',Q1m);
 }
@@ -1937,6 +1938,36 @@ function renderSinImporteBox(elId){
     <div style="margin-top:5px;font-size:11px;color:var(--text3)">${sin.map(r=>`${esc4(r.guest)||'(sin nombre)'} (${r.canal==='booking'?'Booking':r.canal==='airbnb'?'Airbnb':'Directo'} · ${fdate(r.ci)}→${r.co?fdate(r.co):'?'}${r.room?' · hab '+esc4(r.room):''})`).join(' · ')}</div>
     <div style="margin-top:4px;font-size:10px;color:var(--text3)">Míralo en el extracto del portal y ponle el importe a mano. Si de verdad no se cobró (anulada o no se presentó), bórrala para que deje de avisar.</div>
   </div>`;
+}
+// ═══════════ RESERVAS DE BOOKING/AIRBNB YA TERMINADAS SIN COMISIÓN ═══════════
+// ⚠️ 26 sep 2026. Las reservas que llegan del PMS traen el precio pero NO la comisión:
+// esa solo la dice el extracto de pagos del portal. En el informe del T3 salió la
+// comisión de Booking de septiembre vacía (22 reservas, 360 € sin restar) y nadie lo vio.
+// Por eso se avisa aquí y otra vez al descargar el PDF o el CSV para la gestora.
+function reservasSinComision(meses){
+  const hoy=hoyISO();
+  return visibleReservas()
+    .filter(r=>(r.canal==='booking'||r.canal==='airbnb')&&r.co&&r.co<hoy&&Number(r.bruto)>0&&!Number(r.com)
+      &&(!meses||mesesDe(r).some(m=>meses.includes(m))))
+    .sort((a,b)=>String(a.ci).localeCompare(String(b.ci)));
+}
+function renderSinComisionBox(elId,meses){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const sin=reservasSinComision(meses);
+  if(!sin.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="margin:0 0 12px;padding:10px 14px;background:rgba(200,74,74,.08);border:1px solid var(--red);border-radius:8px;font-size:12px">
+    <b style="color:var(--red)">⚠️ ${sin.length} reserva${sin.length>1?'s':''} de Booking/Airbnb sin comisión</b>
+    <span style="font-size:11px;color:var(--text3)">— el informe saldría con más ingresos de los reales</span>
+    <div style="margin-top:5px;font-size:11px;color:var(--text3)">${sin.map(r=>`${esc4(r.guest)||'(sin nombre)'} (${r.canal==='booking'?'Booking':'Airbnb'} · ${fdate(r.ci)}→${fdate(r.co)})`).join(' · ')}</div>
+    <div style="margin-top:4px;font-size:10px;color:var(--text3)">Descarga el extracto de pagos del portal y cárgalo antes de mandar nada a la gestora.</div>
+  </div>`;
+}
+// Antes de descargar el informe para la gestora: si faltan comisiones, se pregunta.
+function okSinComision(meses){
+  const sin=reservasSinComision(meses);
+  if(!sin.length)return true;
+  return confirm(`⚠️ Faltan las comisiones de ${sin.length} reserva${sin.length>1?'s':''} de Booking/Airbnb ya terminada${sin.length>1?'s':''}.\n\nEl informe saldría con más ingresos de los reales. Carga antes el extracto de pagos del portal.\n\n¿Descargarlo igualmente?`);
 }
 function esc4(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
@@ -1977,6 +2008,7 @@ function renderProrrBox(elId,mesArr){
 function exportCSV(){
   const P=periodoInf();
   const Q1m=P.cols;
+  if(!okSinComision(Q1m))return;
   const mLabel=P.label;
   const MN={1:'Enero',2:'Febrero',3:'Marzo',4:'Abril',5:'Mayo',6:'Junio',7:'Julio',8:'Agosto',9:'Septiembre',10:'Octubre',11:'Noviembre',12:'Diciembre'};
   const fv=v=>v?String(v.toFixed(2)):'';
@@ -2143,6 +2175,7 @@ function apuntarEntregaEster(tipo){
 }
 
 async function exportPDF(){
+  if(!okSinComision(periodoInf().cols))return;
   notif('Generando PDF...');
   try{
     // Load jsPDF
