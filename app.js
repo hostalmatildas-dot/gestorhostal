@@ -1989,7 +1989,8 @@ function exportCSV(){
   const pendC=pendientesCobro();
   if(pendC.length)csv+=`${q('SIN COBRAR TODAVIA (incluido por mes de estancia): '+pendC.map(r=>`${r.guest} ${fdate(r.ci)} ${(r.bruto||0).toFixed(2)}`).join(' | '))}${','.repeat(Q1m.length+1)}\n`;
   csv+=`INGRESOS NETOS,${Q1m.map(m=>fv(ingTotal([m],'neto'))).join(',')},${fv(ingTotal(Q1m,'neto'))}\n--- GASTOS FIJOS ---,,,,\n`;
-  visibleGastosFijos().forEach(g=>{const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${q(g.n)},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
+  // Un gasto fijo que en el período vale 0 no se lista: la gestora solo ve lo que se pagó.
+  visibleGastosFijos().forEach(g=>{if(!Q1m.reduce((s,m)=>s+(g.m[m]||0),0))return;const ms=Q1m.map(m=>fv(g.m[m]||0));csv+=`${q(g.n)},${ms.join(',')},${fv(Q1m.reduce((s,m)=>s+(g.m[m]||0),0))}\n`;});
   csv+=`--- GASTOS VARIABLES ---,,,,\n`;
   visibleGastosVar().forEach(g=>{const gm=gMes(g);if(!Q1m.includes(gm))return;csv+=`${q(g.n)},${Q1m.map(m=>m===gm?fv(g.importe):'').join(',')},${fv(g.importe)}\n`;});
   csv+=`TOTAL GASTOS,${Q1m.map(m=>fv(gTot([m]))).join(',')},${fv(gTot(Q1m))}\nRESULTADO NETO,${Q1m.map(m=>fv(ingTotal([m],'neto')-gTot([m]))).join(',')},${fv(ingTotal(Q1m,'neto')-gTot(Q1m))}\n`;
@@ -2231,9 +2232,9 @@ async function exportPDF(){
     drawHeader('>> INGRESOS');
     const canales=[
       {l:'Booking.com (bruto)',c:'booking',f:'bruto'},
-      {l:'↳ Comisión Booking',c:'booking',f:'com',indent:true,neg:true},
+      {l:'- Comisión Booking',c:'booking',f:'com',indent:true,neg:true},
       {l:'Airbnb (bruto)',c:'airbnb',f:'bruto'},
-      {l:'↳ Comisión Airbnb',c:'airbnb',f:'com',indent:true,neg:true},
+      {l:'- Comisión Airbnb',c:'airbnb',f:'com',indent:true,neg:true},
       {l:'Directo (Bizum/Transf.)',c:'directo',f:'neto'},
     ];
     canales.forEach(r=>{
@@ -2278,7 +2279,7 @@ async function exportPDF(){
     // GASTOS VARIABLES
     drawHeader('>> GASTOS VARIABLES');
     visibleGastosVar().forEach(g=>{
-      const gm=pdate(g.fecha).getMonth()+1;
+      const gm=gMes(g);
       if(!Q1m.includes(gm))return;
       const vals=Q1m.map(m=>m===gm?g.importe:null);
       drawRow(g.n,vals,g.importe,[191,95,74]);
