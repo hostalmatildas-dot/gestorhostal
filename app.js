@@ -372,7 +372,12 @@ function findAccountingMatch(p){
   // señales: misma habitación, nombre de huésped parecido, o sin habitación y mismo importe.
   return visibleReservas().find(r=>{
     if(!r.ci||!p.ci||dayDiff(p.ci,r.ci)>1)return false;
-    if(r.room&&p.room&&r.room===p.room)return true;
+    // ⚠️ 3 oct 2026 — la misma habitación ya no basta: dos cobros de Stripe de septiembre
+    // (Óscar Díaz 171 €, Ismael Lázaro 58,90 €) se perdieron porque en esa habitación
+    // empezaba el día antes una reserva de Booking de 10 noches. Ahora además tiene que
+    // salir el mismo día (±1) y ser del mismo canal o del mismo importe.
+    if(r.room&&p.room&&r.room===p.room&&(!r.co||!p.co||dayDiff(p.co,r.co)<=1)
+       &&(r.canal===p.canal||Math.abs((r.bruto||0)-(p.bruto||0))<0.5))return true;
     if(_guestSim(p.guest,r.guest))return true;
     return !r.room && Math.abs((r.bruto||0)-(p.bruto||0))<0.5;
   });
