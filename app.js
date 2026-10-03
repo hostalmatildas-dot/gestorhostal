@@ -2844,9 +2844,12 @@ async function submitLogin(ev){
 async function initFirebase(){
   try{
     const {initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const {getFirestore,doc,setDoc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const {initializeFirestore,doc,setDoc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const app=initializeApp(_fb);
-    _db=getFirestore(app);
+    // ⚠️ 3 oct 2026 — una reserva del PMS sin fecha de cobro lleva `fc:undefined`, y la nube
+    // rechazaba el paquete ENTERO por esa casilla vacía: «No se está guardando en la nube».
+    // Así las casillas vacías simplemente no viajan.
+    _db=initializeFirestore(app,{ignoreUndefinedProperties:true});
     await initAuth(app);
     _syncEnabled=true;
     const sd=document.getElementById('sync-dot');
