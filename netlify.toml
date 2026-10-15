@@ -1,5 +1,8 @@
 [build]
-  publish = "."
+  # SOLO esta carpeta se publica. Antes era "." y la CLI subía TODO lo del Mac, también lo
+  # que .gitignore deja fuera: memory/, informes/ y ficheros sueltos se veían en internet
+  # (15-oct-2026). Este sitio solo sirve de puente: la app vive en GitHub Pages.
+  publish = "netlify/publico"
   functions = "netlify/functions"
 
 [[redirects]]
