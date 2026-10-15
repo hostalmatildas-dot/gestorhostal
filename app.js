@@ -387,6 +387,7 @@ async function fetchPMSData(silencioso=false){
     if(!r.ok) throw new Error(r.status);
     RESERVAS_PMS=await r.json();
     await fetchGastosOTA(silencioso);
+    if(await fetchAnuladasPMS())quitarAnuladasPMS();
     pmsLastSync=new Date();
     const hh=pmsLastSync.getHours().toString().padStart(2,'0');
     const mm=pmsLastSync.getMinutes().toString().padStart(2,'0');
@@ -472,6 +473,40 @@ async function fetchGastosOTA(silencioso=false){
     GASTOS_OTA=await r.json();
     return true;
   }catch(e){ console.error('gastos-ota:',e); return false; }
+}
+// Reservas que el PMS anuló DESPUÉS de copiarlas aquí (15-oct-2026, caso Özgöl: anulada
+// en el PMS el 16-sep y aquí seguía un mes después con el aviso rojo de «sin importe»).
+// Se quitan solas. Si ya tienen cobro, comisión, o nota con importe, NO se tocan: puede
+// haber dinero de verdad detrás (una penalización), y se avisa para mirarlo.
+let ANULADAS_PMS=[];
+async function fetchAnuladasPMS(){
+  const secret=localStorage.getItem('appSecret')||'';
+  if(!secret)return false;
+  try{
+    const r=await fetch(`${PMS_PROXY_URL}?year=2026&que=anuladas`,{headers:{'x-app-secret':secret}});
+    if(!r.ok)throw new Error(r.status);
+    const d=await r.json();
+    if(!Array.isArray(d))return false;
+    ANULADAS_PMS=d;
+    return true;
+  }catch(e){ console.error('anuladas:',e); return false; }
+}
+function quitarAnuladasPMS(){
+  const anul=new Set(ANULADAS_PMS),quitar=[],conDatos=[];
+  RESERVAS_EXTRA.forEach(r=>{
+    if(r.origen!=='pms'||!anul.has(r.id)||!r.ci||r.ci<IMPORTAR_PMS_DESDE)return;  // 1T y 2T: entregados
+    // A 0 € no hay dinero en juego: se quita aunque tenga nota (la nota solo explicaba el 0)
+    (r.fc||r.com||(r.nota&&r.bruto)?conDatos:quitar).push(r);
+  });
+  if(quitar.length){
+    quitar.forEach(r=>_tumba('ing_extra',r.id));
+    RESERVAS_EXTRA=RESERVAS_EXTRA.filter(r=>!quitar.includes(r));
+    RESERVAS=[...RESERVAS_BASE,...RESERVAS_EXTRA];
+    guardarLocal('ing_extra',RESERVAS_EXTRA);
+    renderDashboard();
+    notif(`Quitada(s) ${quitar.length} reserva(s) anulada(s) en el PMS: ${quitar.map(r=>`${r.guest} ${fdate(r.ci)}`).join(' · ')}`);
+  }
+  if(conDatos.length)notif(`Anulada(s) en el PMS pero con cobro o nota aquí — mírala(s): ${conDatos.map(r=>`${r.guest} ${fdate(r.ci)}`).join(' · ')}`,true);
 }
 function traerGastosOTA(){
   let n=0;

@@ -46,7 +46,8 @@ export default async (req) => {
 
   // Qué se pide: las reservas (por defecto) o los gastos de portal que van por mes.
   // Lista cerrada a propósito: nunca se reenvía al PMS una ruta que venga de fuera.
-  const RUTAS = { reservations: 'accounting/reservations', 'gastos-ota': 'accounting/gastos-ota' };
+  const RUTAS = { reservations: 'accounting/reservations', 'gastos-ota': 'accounting/gastos-ota',
+                  anuladas: 'accounting/anuladas' };
   const ruta = RUTAS[new URL(req.url).searchParams.get('que') || 'reservations'];
   if (!ruta) return json({ error: { message: 'No sé qué me pides' } }, 400);
 
