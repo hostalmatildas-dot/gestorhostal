@@ -193,6 +193,7 @@ const CAJA_DESDE='2026-07-01';
 const DIAS_GRACIA_OTA=30;
 function esPendienteCobro(r){
   if(r.fc)return false;                       // ya cobrada
+  if(!(Number(r.bruto)>0))return false;       // a 0 € no hay nada que cobrar (p. ej. anulada y devuelta)
   const fin=r.co||r.ci;
   if(!fin||fin<CAJA_DESDE)return false;
   const hoy=hoyISO();
