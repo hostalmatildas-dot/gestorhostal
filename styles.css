@@ -64,7 +64,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .pill.on{background:var(--gold);border-color:var(--gold);color:#0d0d0b;}
 .pill:hover:not(.on){background:var(--surf2);color:var(--text);}
 
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;}
+.kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-bottom:14px;}
 @media(max-width:800px){.kpis{grid-template-columns:repeat(3,1fr);}}
 .kpi{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;position:relative;overflow:hidden;}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}

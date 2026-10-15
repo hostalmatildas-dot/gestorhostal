@@ -219,6 +219,55 @@ function gVar(mes){const a=_ma(mes);return visibleGastosVar().filter(g=>a.includ
 function gTot(mes){return gFijo(mes)+gVar(mes);}
 function neto(mes){return ingTotal(mes,'neto')-gTot(mes);}
 
+// «Te queda» (15-oct-2026): Resultado neto − IVA a pagar − adelanto de la renta.
+// Manda el borrador de Ester: clave `impuestos_ester` en la nube ({T3:{iva,renta,benefAcum},
+// ajustes:{intereses,amortEdificio,amortOrdenador}}), que carga un script del Mac.
+// El trimestre que aún no tiene borrador se calcula aquí con su mismo método y sale
+// «provisional». No cuadra al céntimo con ella: Ester mete facturas atrasadas en el
+// trimestre siguiente y la app no guarda el IVA de cada ticket (se supone 21 % incluido
+// en los gastos con factura española, y 21 % encima de la comisión de Booking).
+let IMPUESTOS_ESTER=sj('impuestos_ester',{})||{};
+const CATS_CON_IVA=['limpieza','lavanderia','mantenimiento','suministros','otros','inmueble'];
+function mesesTrim(q){return[q*3-2,q*3-1,q*3];}
+function esHipoteca(g){return g.id==='gf02'||/hipoteca/i.test(g.n||'');}
+function ivaRepercutido(ms){return ingTotal(ms,'bruto')/1.1*0.1;}
+function ivaSoportadoProv(ms){
+  const gv=visibleGastosVar().filter(g=>CATS_CON_IVA.includes(g.cat)&&ms.includes(gMes(g))).reduce((s,g)=>s+(g.importe||0),0);
+  const gf=visibleGastosFijos().filter(g=>g.cat==='suministros').reduce((s,g)=>s+ms.reduce((x,m)=>x+(g.m[m]||0),0),0);
+  const comB=Math.abs(visibleReservas().filter(r=>r.canal==='booking').reduce((s,r)=>s+ms.reduce((x,m)=>x+impMes(r,m,'com'),0),0));
+  return (gv+gf)*21/121+comB*0.21;
+}
+// Beneficio a ojos de Hacienda: sin IVA, la hipoteca no cuenta entera (solo intereses)
+// y se resta el desgaste del piso y del ordenador, con las cifras de Ester.
+function benefFiscalProv(ms){
+  const aj=IMPUESTOS_ESTER.ajustes||{};
+  const hip=visibleGastosFijos().filter(esHipoteca).reduce((s,g)=>s+ms.reduce((x,m)=>x+(g.m[m]||0),0),0);
+  return neto(ms)+hip-ivaRepercutido(ms)+ivaSoportadoProv(ms)-(aj.intereses||0)-(aj.amortEdificio||0)-(aj.amortOrdenador||0);
+}
+function impuestosTrim(q){
+  const e=IMPUESTOS_ESTER['T'+q];
+  if(e&&e.iva!=null&&e.renta!=null)return{iva:e.iva,renta:e.renta,prov:false};
+  const ms=mesesTrim(q);
+  const iva=Math.max(0,ivaRepercutido(ms)-ivaSoportadoProv(ms));
+  // La renta se paga sobre lo ganado en el AÑO: se parte del último acumulado de Ester
+  let benef=0,desde=1;
+  for(let k=q-1;k>=1;k--){const ek=IMPUESTOS_ESTER['T'+k];if(ek&&ek.benefAcum!=null){benef=ek.benefAcum;desde=k+1;break;}}
+  for(let k=desde;k<=q;k++)benef+=benefFiscalProv(mesesTrim(k));
+  let pagado=0;
+  for(let k=1;k<q;k++)pagado+=impuestosTrim(k).renta;
+  return{iva,renta:Math.max(0,0.2*benef-pagado),prov:true};
+}
+// Reparto del trimestre por meses: el IVA según lo facturado, la renta según lo ganado.
+function impuestosMes(m){
+  const q=Math.ceil(m/3),ms=mesesTrim(q),t=impuestosTrim(q),i=ms.indexOf(m);
+  const ing=ms.map(x=>ingTotal([x],'bruto')),ti=ing.reduce((a,b)=>a+b,0);
+  const gan=ms.map(x=>Math.max(0,neto([x]))),tg=gan.reduce((a,b)=>a+b,0);
+  return{iva:ti?t.iva*ing[i]/ti:t.iva/3,renta:tg?t.renta*gan[i]/tg:t.renta/3,prov:t.prov};
+}
+function impuestos(mes){
+  return _ma(mes).reduce((o,m)=>{const x=impuestosMes(m);o.iva+=x.iva;o.renta+=x.renta;o.prov=o.prov||x.prov;return o;},{iva:0,renta:0,prov:false});
+}
+
 // % de ocupación: noches ocupadas / noches disponibles en los meses dados (año 2026).
 // Se excluyen las entradas-resumen (p.ej. Airbnb T2), que no van ligadas a una habitación real.
 function occNightsRoom(room,mesArr){
@@ -582,12 +631,14 @@ function renderDashboard(){
   renderSinImporteBox('dash-sinimporte');
   renderPendBox('dash-pendientes');
   const ing=ingTotal(mes,'bruto'),com=Math.abs(comTotal(mes)),nto=ingTotal(mes,'neto'),gast=gTot(mes),res=nto-gast,ocu=occPct(mes);
+  const imp=impuestos(mes),queda=res-imp.iva-imp.renta;
   document.getElementById('kpis').innerHTML=`
     <div class="kpi g"><div class="kpi-lbl">Ingresos brutos</div><div class="kpi-val green">${fn0(ing)}</div><div class="kpi-sub">${mL}</div></div>
     <div class="kpi r"><div class="kpi-lbl">Comisiones OTA</div><div class="kpi-val red">${fn0(com)}</div><div class="kpi-sub">Booking + Airbnb</div></div>
     <div class="kpi b"><div class="kpi-lbl">Ingresos netos</div><div class="kpi-val blue">${fn0(nto)}</div><div class="kpi-sub">Tras comisiones</div></div>
     <div class="kpi r"><div class="kpi-lbl">Total gastos</div><div class="kpi-val red">${fn0(gast)}</div><div class="kpi-sub">Fijos + variables</div></div>
     <div class="kpi ${res>=0?'g':'r'}"><div class="kpi-lbl">Resultado neto</div><div class="kpi-val ${res>=0?'green':'red'}">${fn0(res)}</div><div class="kpi-sub">${res>=0?'Beneficio':'Pérdida'}</div></div>
+    <div class="kpi ${queda>=0?'g':'r'}" title="Resultado neto − IVA a pagar − adelanto de la renta${imp.prov?' (provisional: aún no hay borrador de Ester)':' (cifras del borrador de Ester)'}"><div class="kpi-lbl">Te queda</div><div class="kpi-val ${queda>=0?'green':'red'}">${fn0(queda)}</div><div class="kpi-sub">− IVA ${fn0(imp.iva)} − renta ${fn0(imp.renta)}${imp.prov?' · provisional':''}</div></div>
     <div class="kpi o"><div class="kpi-lbl">Ocupación</div><div class="kpi-val gold">${ocu}%</div><div class="kpi-sub">${ROOMS.length} hab. · sin resúmenes</div></div>`;
 
   // Balance cards: año entero | de enero al mes de hoy | período seleccionado
@@ -2883,6 +2934,7 @@ async function initFirebase(){
         if(d.gv5){GASTOS_VAR=juntarPorId('gv5',d.gv5,GASTOS_VAR);guardarLocal('gv5',GASTOS_VAR);}
         if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);}
         if(d.entregas_ester){ENTREGAS=_juntarEntregas(d.entregas_ester,ENTREGAS);guardarLocal('entregas_ester',ENTREGAS);}
+        if(d.impuestos_ester){IMPUESTOS_ESTER=d.impuestos_ester;guardarLocal('impuestos_ester',IMPUESTOS_ESTER);}
       }finally{soltarCandado();}
       cleanupInventedData();
     }
@@ -2909,6 +2961,7 @@ async function initFirebase(){
           if(d.gv5){const nx=juntarPorId('gv5',d.gv5,GASTOS_VAR);if(JSON.stringify(nx)!==JSON.stringify(GASTOS_VAR)){GASTOS_VAR=nx;guardarLocal('gv5',GASTOS_VAR);changed=true;}}
           if(d.gf6){const nf=juntarFijos(d.gf6,GASTOS_FIJOS);if(JSON.stringify(nf)!==JSON.stringify(GASTOS_FIJOS)){GASTOS_FIJOS.length=0;GASTOS_FIJOS.push(...nf);guardarLocal('gf6',GASTOS_FIJOS);changed=true;}}
           if(d.entregas_ester){const ne=_juntarEntregas(d.entregas_ester,ENTREGAS);if(JSON.stringify(ne)!==JSON.stringify(ENTREGAS)){ENTREGAS=ne;guardarLocal('entregas_ester',ENTREGAS);}}
+          if(d.impuestos_ester&&JSON.stringify(d.impuestos_ester)!==JSON.stringify(IMPUESTOS_ESTER)){IMPUESTOS_ESTER=d.impuestos_ester;guardarLocal('impuestos_ester',IMPUESTOS_ESTER);changed=true;}
         }finally{soltarCandado();}
         cleanupInventedData();
         if(changed){
@@ -3060,6 +3113,8 @@ async function syncToFirebase(){
       gf6:fijosJuntos,
       gf_deleted:[...new Set([...(nube.gf_deleted||[]),...sj('gf_deleted',[])])],
       entregas_ester:_juntarEntregas(nube.entregas_ester,ENTREGAS),
+      // Solo la escribe el script del Mac: manda lo de la nube; lo de aquí solo rellena si falta
+      impuestos_ester:{...IMPUESTOS_ESTER,...(nube.impuestos_ester||{})},
       del_gv5:[...new Set([...(nube.del_gv5||[]),...sj('del_gv5',[])])],
       del_ing_extra:[...new Set([...(nube.del_ing_extra||[]),...sj('del_ing_extra',[])])],
       del_gf6:[...new Set([...(nube.del_gf6||[]),...sj('del_gf6',[])])],
